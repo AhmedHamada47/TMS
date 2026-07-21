@@ -1,0 +1,120 @@
+@model TaskItem
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-info-circle me-2"></i>Task Details
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <h4 class="fw-bold mb-4">@Model.Title</h4>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                        <span class="status-badge status-@(Model.Status == TaskItemStatus.ToDo ? "todo" : Model.Status == TaskItemStatus.InProgress ? "progress" : "done")">
+                            <span class="status-dot"></span>
+                            @(Model.Status == TaskItemStatus.InProgress ? "In Progress" : Model.Status.ToString())
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Priority</div>
+                    <div class="detail-value">
+                        <span class="priority-badge priority-@Model.Priority.ToString().ToLower()">
+                            @(Model.Priority == TaskPriority.Urgent ? "Urgent" : Model.Priority.ToString())
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Category</div>
+                    <div class="detail-value">
+                        @if (Model.Category != null)
+                        {
+                            <span class="category-tag">
+                                <span class="cat-dot" style="background: @Model.Category.Color"></span>
+                                @Model.Category.Name
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">No Category</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Assignee</div>
+                    <div class="detail-value">
+                        @if (Model.User != null)
+                        {
+                            <div class="user-cell">
+                                <img src="@Model.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                                <span>@Model.User.Name</span>
+                                <small class="text-muted">(@Model.User.Email)</small>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unassigned</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Due Date</div>
+                    <div class="detail-value">
+                        @if (Model.DueDate.HasValue)
+                        {
+                            <span class="@(Model.DueDate < DateTime.UtcNow && Model.Status != TaskItemStatus.Done ? "text-danger fw-bold" : "")">
+                                @Model.DueDate.Value.ToString("MMMM dd, yyyy")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">No due date set</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="detail-item">
+                    <div class="detail-label">Created</div>
+                    <div class="detail-value">
+                        @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                    </div>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <div class="col-12">
+                    <div class="detail-item">
+                        <div class="detail-label">Description</div>
+                        <div class="detail-value">
+                            <p class="mb-0" style="white-space: pre-line;">@Model.Description</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

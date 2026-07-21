@@ -1,0 +1,61 @@
+@inject TMS.Data.AppDbContext _context
+@{
+    var categoryCounts = _context.Categories.Select(c => new { c.Id, c.Name, c.Color, Count = c.Tasks.Count }).ToList();
+}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <i class="fas fa-tasks"></i>
+            <span>TaskFlow</span>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
+            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")">
+                <a asp-controller="Home" asp-action="Index" class="nav-link">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-section">Management</li>
+            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Tasks" ? "active" : "")">
+                <a asp-controller="Tasks" asp-action="Index" class="nav-link">
+                    <i class="fas fa-list-check"></i>
+                    <span>All Tasks</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a asp-controller="Tasks" asp-action="Create" class="nav-link">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>New Task</span>
+                </a>
+            </li>
+            <li class="nav-section">Categories</li>
+            @foreach (var cat in categoryCounts)
+            {
+                <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Categories" && Context.Request.Query["categoryId"].ToString() == cat.Id.ToString() ? "active" : "")">
+                    <a asp-controller="Tasks" asp-action="Index" asp-route-categoryId="@cat.Id" class="nav-link">
+                        <span class="category-dot" style="background: @cat.Color"></span>
+                        <span>@cat.Name</span>
+                        <span class="badge">@cat.Count</span>
+                    </a>
+                </li>
+            }
+            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Categories" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+                <a asp-controller="Categories" asp-action="Index" class="nav-link">
+                    <i class="fas fa-gear"></i>
+                    <span>Manage Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <img src="https://ui-avatars.com/api/?name=Admin+User&background=6f42c1&color=fff" alt="User" class="user-avatar" />
+            <div class="user-details">
+                <span class="user-name">Admin</span>
+                <span class="user-role">Project Manager</span>
+            </div>
+        </div>
+    </div>
+</aside>

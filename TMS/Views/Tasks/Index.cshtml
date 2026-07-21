@@ -1,0 +1,152 @@
+@model List<TaskItem>
+@{
+    ViewData["Title"] = "Tasks";
+}
+
+<div class="filter-bar">
+    <form asp-action="Index" method="get" class="d-flex gap-3 flex-wrap align-items-center w-100">
+        <div>
+            <label class="form-label mb-0">Status</label>
+            <select name="status" asp-items="ViewBag.Statuses" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-0">Category</label>
+            <select name="categoryId" asp-items="ViewBag.Categories" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-0">Assignee</label>
+            <select name="userId" asp-items="ViewBag.Users" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All Members</option>
+            </select>
+        </div>
+        <div class="d-flex gap-2 align-items-end">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <a asp-action="Create" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> New Task</a>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h5><i class="fas fa-list-check me-2"></i>All Tasks</h5>
+        <span class="text-muted small">@Model.Count task(s)</span>
+    </div>
+    <table class="table" id="taskTable">
+        <thead>
+            <tr>
+                <th style="width: 30%;">Task</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Category</th>
+                <th>Assignee</th>
+                <th>Due Date</th>
+                <th style="width: 100px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-list-check"></i>
+                            <h5>No tasks found</h5>
+                            <p>Try adjusting your filters or create a new task</p>
+                            <a asp-action="Create" class="btn btn-primary btn-sm mt-2">Create Task</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            @foreach (var task in Model)
+            {
+                <tr>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@task.Id" class="fw-semibold text-decoration-none" style="color: var(--dark);">
+                            @task.Title
+                        </a>
+                        @if (!string.IsNullOrEmpty(task.Description))
+                        {
+                            <div class="text-muted small text-truncate" style="max-width: 350px;">@task.Description</div>
+                        }
+                    </td>
+                    <td>
+                        <span class="status-badge status-@(task.Status == TaskItemStatus.ToDo ? "todo" : task.Status == TaskItemStatus.InProgress ? "progress" : "done")">
+                            <span class="status-dot"></span>
+                            @(task.Status == TaskItemStatus.InProgress ? "In Progress" : task.Status.ToString())
+                        </span>
+                    </td>
+                    <td>
+                        <span class="priority-badge priority-@task.Priority.ToString().ToLower()">
+                            @(task.Priority == TaskPriority.Urgent ? "Urgent" : task.Priority.ToString())
+                        </span>
+                    </td>
+                    <td>
+                        @if (task.Category != null)
+                        {
+                            <span class="category-tag">
+                                <span class="cat-dot" style="background: @task.Category.Color"></span>
+                                @task.Category.Name
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @if (task.User != null)
+                        {
+                            <div class="user-cell">
+                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                                <span>@task.User.Name</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unassigned</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @if (task.DueDate.HasValue)
+                        {
+                            <span class="@(task.DueDate < DateTime.UtcNow && task.Status != TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
+                                @task.DueDate.Value.ToString("MMM dd, yyyy")
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a asp-action="Edit" asp-route-id="@task.Id" class="btn-icon" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            @if (task.Status != TaskItemStatus.Done)
+                            {
+                                <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@task.Id" />
+                                    <input type="hidden" name="status" value="@TaskItemStatus.Done" />
+                                    <button type="submit" class="btn-icon success" title="Mark Complete">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+                            }
+                            <form asp-action="Delete" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@task.Id" />
+                                <button type="submit" class="btn-icon danger" title="Delete" onclick="return confirm('Are you sure you want to delete this task?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

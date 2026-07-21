@@ -1,0 +1,313 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Total Tasks</div>
+                <div class="stat-value">@Model.TotalTasks</div>
+                <div class="stat-change up">
+                    <i class="fas fa-arrow-up me-1"></i>All tasks in the system
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="fas fa-spinner"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">In Progress</div>
+                <div class="stat-value">@Model.TasksInProgress</div>
+                <div class="stat-change">
+                    <i class="fas fa-clock me-1"></i>Actively being worked on
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value">@Model.TasksDone</div>
+                <div class="stat-change up">
+                    <i class="fas fa-check me-1"></i>@(Model.TotalTasks > 0 ? (Model.TasksDone * 100 / Model.TotalTasks) : 0)% completion rate
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-label">Urgent & Overdue</div>
+                <div class="stat-value">@(Model.UrgentTasks + Model.OverdueTasks)</div>
+                <div class="stat-change down">
+                    <i class="fas fa-exclamation-circle me-1"></i>@Model.UrgentTasks urgent, @Model.OverdueTasks overdue
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-clock me-2"></i>Recent Tasks</span>
+                <a asp-controller="Tasks" asp-action="Index" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.RecentTasks.Any())
+                            {
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <i class="fas fa-inbox"></i>
+                                            <h5>No tasks yet</h5>
+                                            <p>Create your first task to get started</p>
+                                            <a asp-controller="Tasks" asp-action="Create" class="btn btn-primary btn-sm mt-2">Create Task</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var task in Model.RecentTasks)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Tasks" asp-action="Details" asp-route-id="@task.Id" class="fw-semibold text-decoration-none" style="color: var(--dark);">
+                                            @task.Title
+                                        </a>
+                                        @if (task.Category != null)
+                                        {
+                                            <div class="category-tag mt-1">
+                                                <span class="cat-dot" style="background: @task.Category.Color"></span>
+                                                @task.Category.Name
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-@(task.Status == TMS.Models.TaskItemStatus.ToDo ? "todo" : task.Status == TMS.Models.TaskItemStatus.InProgress ? "progress" : "done")">
+                                            <span class="status-dot"></span>
+                                            @(task.Status == TMS.Models.TaskItemStatus.InProgress ? "In Progress" : task.Status.ToString())
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="priority-badge priority-@task.Priority.ToString().ToLower()">
+                                            @(task.Priority == TaskPriority.Urgent ? "Urgent" : task.Priority.ToString())
+                                        </span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if (task.DueDate.HasValue)
+                                        {
+                                            <span class="@(task.DueDate < DateTime.UtcNow && task.Status != TMS.Models.TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
+                                                @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (task.User != null)
+                                        {
+                                            <div class="user-cell">
+                                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                                                <span>@task.User.Name</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Unassigned</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="fas fa-calendar me-2"></i>Upcoming Deadlines
+            </div>
+            <div class="card-body p-0">
+                <div class="table-container" style="box-shadow: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.UpcomingTasks.Any())
+                            {
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <i class="fas fa-calendar-check"></i>
+                                            <h5>No upcoming tasks</h5>
+                                            <p>All caught up! Great job.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var task in Model.UpcomingTasks)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Tasks" asp-action="Details" asp-route-id="@task.Id" class="fw-semibold text-decoration-none" style="color: var(--dark);">
+                                            @task.Title
+                                        </a>
+                                        @if (task.Category != null)
+                                        {
+                                            <div class="category-tag mt-1">
+                                                <span class="cat-dot" style="background: @task.Category.Color"></span>
+                                                @task.Category.Name
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-@(task.Status == TMS.Models.TaskItemStatus.ToDo ? "todo" : "progress")">
+                                            <span class="status-dot"></span>
+                                            @(task.Status == TMS.Models.TaskItemStatus.InProgress ? "In Progress" : task.Status.ToString())
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="priority-badge priority-@task.Priority.ToString().ToLower()">
+                                            @(task.Priority == TaskPriority.Urgent ? "Urgent" : task.Priority.ToString())
+                                        </span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if (task.DueDate.HasValue)
+                                        {
+                                            var daysLeft = (task.DueDate.Value - DateTime.UtcNow).Days;
+                                            <span class="@(daysLeft <= 2 ? "text-danger fw-semibold" : daysLeft <= 5 ? "text-warning fw-semibold" : "")">
+                                                @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                @if (daysLeft >= 0)
+                                                {
+                                                    <small class="text-muted">(@daysLeft days left)</small>
+                                                }
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (task.User != null)
+                                        {
+                                            <div class="user-cell">
+                                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                                                <span>@task.User.Name</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Unassigned</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="row g-4">
+            <div class="col-sm-6 col-xl-12">
+                <div class="stat-card">
+                    <div class="stat-icon teal">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Team Members</div>
+                        <div class="stat-value">@Model.TotalUsers</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-12">
+                <div class="stat-card">
+                    <div class="stat-icon gray">
+                        <i class="fas fa-folder"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">Categories</div>
+                        <div class="stat-value">@Model.TotalCategories</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-simple me-2"></i>Tasks by Category
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CategorySummaries.Any())
+                        {
+                            var maxCount = Model.CategorySummaries.Max(c => c.TaskCount);
+                            @foreach (var cat in Model.CategorySummaries)
+                            {
+                                var pct = maxCount > 0 ? (cat.TaskCount * 100 / maxCount) : 0;
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="category-tag">
+                                            <span class="cat-dot" style="background: @cat.Color"></span>
+                                            @cat.CategoryName
+                                        </span>
+                                        <span class="fw-semibold">@cat.TaskCount</span>
+                                    </div>
+                                    <div class="progress-thin">
+                                        <div class="progress-bar" role="progressbar" style="width: @pct%; background: @cat.Color;"></div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state p-3">
+                                <i class="fas fa-chart-simple"></i>
+                                <h5>No data</h5>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

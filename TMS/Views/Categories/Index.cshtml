@@ -1,0 +1,70 @@
+@model List<Category>
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="fw-bold mb-0"><i class="fas fa-folder me-2"></i>Manage Categories</h5>
+    <a asp-action="Create" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> New Category
+    </a>
+</div>
+
+<div class="row g-4">
+    @if (!Model.Any())
+    {
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <h5>No categories yet</h5>
+                        <p>Create categories to organize your tasks better</p>
+                        <a asp-action="Create" class="btn btn-primary btn-sm mt-2">Create Category</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @foreach (var category in Model)
+    {
+        <div class="col-xl-4 col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="color-preview" style="background: @category.Color; width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;"></div>
+                        <div class="flex-grow-1">
+                            <h5 class="fw-bold mb-1">@category.Name</h5>
+                            @if (!string.IsNullOrEmpty(category.Description))
+                            {
+                                <p class="text-muted small mb-2">@category.Description</p>
+                            }
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge" style="background: @category.Color; opacity: 0.8;">
+                                    <i class="fas fa-tasks me-1"></i> @category.Tasks.Count task(s)
+                                </span>
+                                <span class="text-muted small">
+                                    Created @category.CreatedAt.ToString("MMM dd, yyyy")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
+                        <a asp-controller="Tasks" asp-action="Index" asp-route-categoryId="@category.Id" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> View Tasks
+                        </a>
+                        <a asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form asp-action="Delete" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@category.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this category? Tasks in this category will become uncategorized.')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

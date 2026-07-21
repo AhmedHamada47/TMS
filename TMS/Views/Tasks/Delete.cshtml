@@ -1,0 +1,30 @@
+@model TaskItem
+@{
+    ViewData["Title"] = "Delete Task";
+}
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-header text-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+    </div>
+    <div class="card-body text-center py-5">
+        <i class="fas fa-trash-alt" style="font-size: 48px; color: var(--danger); opacity: 0.5; margin-bottom: 16px;"></i>
+        <h5 class="fw-bold">Are you sure you want to delete this task?</h5>
+        <p class="text-muted mb-1">"@Model.Title"</p>
+        @if (Model.Category != null)
+        {
+            <p class="text-muted small">Category: @Model.Category.Name</p>
+        }
+        <p class="text-danger small mt-3">This action cannot be undone.</p>
+
+        <form asp-action="Delete" method="post" class="mt-4">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="d-flex gap-2 justify-content-center">
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash me-1"></i> Delete
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
