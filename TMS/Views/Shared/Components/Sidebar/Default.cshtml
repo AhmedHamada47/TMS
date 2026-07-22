@@ -1,15 +1,5 @@
-@inject TMS.Data.AppDbContext _context
-@using System.Security.Claims
-@using Microsoft.EntityFrameworkCore
-@{
-    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    var userIdParsed = int.TryParse(userId, out var uid) ? uid : 0;
-    var categoryCounts = _context.Categories.Where(c => c.UserId == userIdParsed).Select(c => new { c.Id, c.Name, c.Color, Count = c.Tasks.Count }).AsNoTracking().ToList();
-    var userName = User.FindFirstValue(ClaimTypes.Name) ?? "User";
-    var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "";
-    var dbUser = userId != null ? _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == userIdParsed) : null;
-    var avatarUrl = dbUser?.AvatarUrl ?? "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png";
-}
+@model SidebarViewModel
+
 <aside class="sidebar">
     <div class="sidebar-header">
         <a asp-controller="Home" asp-action="Index" class="sidebar-logo text-decoration-none">
@@ -19,14 +9,14 @@
     </div>
     <nav class="sidebar-nav">
         <ul class="nav-list">
-            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")">
+            <li class="nav-item @(Model.CurrentController == "Home" ? "active" : "")">
                 <a asp-controller="Home" asp-action="Index" class="nav-link">
                     <i class="fas fa-chart-pie"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
             <li class="nav-section">Management</li>
-            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Tasks" ? "active" : "")">
+            <li class="nav-item @(Model.CurrentController == "Tasks" ? "active" : "")">
                 <a asp-controller="Tasks" asp-action="Index" class="nav-link">
                     <i class="fas fa-list-check"></i>
                     <span>All Tasks</span>
@@ -39,24 +29,24 @@
                 </a>
             </li>
             <li class="nav-section">Categories</li>
-            @foreach (var cat in categoryCounts)
+            @foreach (var cat in Model.Categories)
             {
-                <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Categories" && Context.Request.Query["categoryId"].ToString() == cat.Id.ToString() ? "active" : "")">
+                <li class="nav-item @(Model.CurrentController == "Categories" && Model.CurrentCategoryId == cat.Id.ToString() ? "active" : "")">
                     <a asp-controller="Tasks" asp-action="Index" asp-route-categoryId="@cat.Id" class="nav-link">
                         <span class="category-dot" style="background: @cat.Color"></span>
                         <span>@cat.Name</span>
-                        <span class="badge">@cat.Count</span>
+                        <span class="badge">@cat.TaskCount</span>
                     </a>
                 </li>
             }
-            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Categories" && ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">
+            <li class="nav-item @(Model.CurrentController == "Categories" && Model.CurrentAction == "Index" ? "active" : "")">
                 <a asp-controller="Categories" asp-action="Index" class="nav-link">
                     <i class="fas fa-gear"></i>
                     <span>Manage Categories</span>
                 </a>
             </li>
             <li class="nav-section">Account</li>
-            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Profile" ? "active" : "")">
+            <li class="nav-item @(Model.CurrentController == "Profile" ? "active" : "")">
                 <a asp-controller="Profile" asp-action="Index" class="nav-link">
                     <i class="fas fa-user"></i>
                     <span>My Profile</span>
@@ -75,10 +65,10 @@
     <div class="sidebar-footer">
         <a asp-controller="Profile" asp-action="Index" class="text-decoration-none">
             <div class="user-info">
-                <img src="@avatarUrl" alt="" class="user-avatar" />
+                <img src="@Model.AvatarUrl" alt="" class="user-avatar" />
                 <div class="user-details">
-                    <span class="user-name">@userName</span>
-                    <span class="user-role">@userEmail</span>
+                    <span class="user-name">@Model.UserName</span>
+                    <span class="user-role">@Model.UserEmail</span>
                 </div>
             </div>
         </a>

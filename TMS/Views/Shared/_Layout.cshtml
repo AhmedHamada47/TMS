@@ -17,7 +17,7 @@
 </head>
 <body>
     <div class="app-wrapper">
-        <partial name="_Sidebar" />
+        @await Component.InvokeAsync("Sidebar")
         <main class="main-content">
             <header class="topbar">
                 <div class="topbar-left">

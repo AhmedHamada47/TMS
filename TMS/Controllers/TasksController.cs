@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TMS.Data;
 using TMS.Models;
 using TMS.ViewModels;
@@ -18,9 +19,15 @@ public class TasksController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(string? search, TaskItemStatus? status, int? categoryId, int? userId)
+    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    public async Task<IActionResult> Index(string? search, TaskItemStatus? status, int? categoryId, string? sort, int page = 1, int pageSize = 10)
     {
-        var query = _context.Tasks.Include(t => t.Category).Include(t => t.User).AsQueryable();
+        var query = _context.Tasks
+            .Include(t => t.Category)
+            .Include(t => t.User)
+            .Where(t => t.UserId == CurrentUserId)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(t => t.Title.Contains(search) || (t.Description != null && t.Description.Contains(search)));
@@ -31,17 +38,32 @@ public class TasksController : Controller
         if (categoryId.HasValue)
             query = query.Where(t => t.CategoryId == categoryId.Value);
 
-        if (userId.HasValue)
-            query = query.Where(t => t.UserId == userId.Value);
+        var total = await query.CountAsync();
 
-        var tasks = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+        query = sort switch
+        {
+            "dueDate" => query.OrderBy(t => t.DueDate),
+            "dueDateDesc" => query.OrderByDescending(t => t.DueDate),
+            "priority" => query.OrderByDescending(t => t.Priority),
+            "created" => query.OrderByDescending(t => t.CreatedAt),
+            _ => query.OrderByDescending(t => t.CreatedAt)
+        };
+
+        var tasks = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
 
         ViewBag.Search = search;
         ViewBag.StatusFilter = status;
         ViewBag.CategoryFilter = categoryId;
-        ViewBag.UserFilter = userId;
-        ViewBag.Categories = new SelectList(await _context.Categories.AsNoTracking().ToListAsync(), "Id", "Name", categoryId);
-        ViewBag.Users = new SelectList(await _context.Users.AsNoTracking().ToListAsync(), "Id", "Name", userId);
+        ViewBag.Sort = sort;
+
+        ViewBag.Page = page;
+        ViewBag.PageSize = pageSize;
+        ViewBag.TotalCount = total;
+        ViewBag.TotalPages = (int)Math.Ceiling((double)total / pageSize);
+        ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.UserId == CurrentUserId).AsNoTracking().ToListAsync(), "Id", "Name", categoryId);
         ViewBag.Statuses = new SelectList(Enum.GetValues<TaskItemStatus>().Cast<TaskItemStatus>().Select(s => new { Value = (int)s, Text = s.ToString() }), "Value", "Text", status.HasValue ? (int)status.Value : null);
 
         return View(tasks);
@@ -51,7 +73,10 @@ public class TasksController : Controller
     {
         if (id == null) return NotFound();
 
-        var task = await _context.Tasks.Include(t => t.Category).Include(t => t.User).FirstOrDefaultAsync(t => t.Id == id);
+        var task = await _context.Tasks
+            .Include(t => t.Category)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
         if (task == null) return NotFound();
 
         return View(task);
@@ -61,8 +86,7 @@ public class TasksController : Controller
     {
         var vm = new TaskViewModel
         {
-            Categories = await _context.Categories.ToListAsync(),
-            Users = await _context.Users.ToListAsync()
+            Categories = await _context.Categories.Where(c => c.UserId == CurrentUserId).ToListAsync()
         };
         return View(vm);
     }
@@ -81,7 +105,7 @@ public class TasksController : Controller
                 Priority = vm.Priority,
                 DueDate = vm.DueDate,
                 CategoryId = vm.CategoryId,
-                UserId = vm.UserId,
+                UserId = CurrentUserId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -91,8 +115,7 @@ public class TasksController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        vm.Categories = await _context.Categories.ToListAsync();
-        vm.Users = await _context.Users.ToListAsync();
+        vm.Categories = await _context.Categories.Where(c => c.UserId == CurrentUserId).ToListAsync();
         return View(vm);
     }
 
@@ -100,7 +123,7 @@ public class TasksController : Controller
     {
         if (id == null) return NotFound();
 
-        var task = await _context.Tasks.FindAsync(id);
+        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
         if (task == null) return NotFound();
 
         var vm = new TaskViewModel
@@ -112,9 +135,7 @@ public class TasksController : Controller
             Priority = task.Priority,
             DueDate = task.DueDate,
             CategoryId = task.CategoryId,
-            UserId = task.UserId,
-            Categories = await _context.Categories.ToListAsync(),
-            Users = await _context.Users.ToListAsync()
+            Categories = await _context.Categories.Where(c => c.UserId == CurrentUserId).ToListAsync()
         };
 
         return View(vm);
@@ -126,18 +147,17 @@ public class TasksController : Controller
     {
         if (id != vm.Id) return NotFound();
 
+        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
+        if (task == null) return NotFound();
+
         if (ModelState.IsValid)
         {
-            var task = await _context.Tasks.FindAsync(id);
-            if (task == null) return NotFound();
-
             task.Title = vm.Title;
             task.Description = vm.Description;
             task.Status = vm.Status;
             task.Priority = vm.Priority;
             task.DueDate = vm.DueDate;
             task.CategoryId = vm.CategoryId;
-            task.UserId = vm.UserId;
             task.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -145,8 +165,7 @@ public class TasksController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        vm.Categories = await _context.Categories.ToListAsync();
-        vm.Users = await _context.Users.ToListAsync();
+        vm.Categories = await _context.Categories.Where(c => c.UserId == CurrentUserId).ToListAsync();
         return View(vm);
     }
 
@@ -154,7 +173,7 @@ public class TasksController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(int id, TaskItemStatus status)
     {
-        var task = await _context.Tasks.FindAsync(id);
+        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
         if (task == null) return NotFound();
 
         task.Status = status;
@@ -169,7 +188,10 @@ public class TasksController : Controller
     {
         if (id == null) return NotFound();
 
-        var task = await _context.Tasks.Include(t => t.Category).Include(t => t.User).FirstOrDefaultAsync(t => t.Id == id);
+        var task = await _context.Tasks
+            .Include(t => t.Category)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
         if (task == null) return NotFound();
 
         return View(task);
@@ -179,7 +201,7 @@ public class TasksController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var task = await _context.Tasks.FindAsync(id);
+        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == CurrentUserId);
         if (task != null)
         {
             _context.Tasks.Remove(task);

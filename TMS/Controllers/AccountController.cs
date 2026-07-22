@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -13,17 +11,11 @@ namespace TMS.Controllers;
 public class AccountController : Controller
 {
     private readonly AppDbContext _context;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, FailedAttempt> _failedLogins = new();
 
     public AccountController(AppDbContext context)
     {
         _context = context;
-    }
-
-    private static string HashPassword(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToHexString(bytes);
     }
 
     [HttpGet]
@@ -49,13 +41,24 @@ public class AccountController : Controller
             return View();
         }
 
-        var hashed = HashPassword(password);
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email && u.Password == hashed);
-        if (user == null)
+        var key = email.ToLowerInvariant();
+        if (_failedLogins.TryGetValue(key, out var attempt) && attempt.IsLocked)
         {
+            ModelState.AddModelError("", "Account temporarily locked due to too many failed attempts. Try again in 15 minutes.");
+            return View();
+        }
+
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
+        {
+            var entry = _failedLogins.GetOrAdd(key, _ => new FailedAttempt());
+            entry.Count++;
+            entry.LastAttempt = DateTime.UtcNow;
             ModelState.AddModelError("", "Invalid email or password");
             return View();
         }
+
+        _failedLogins.TryRemove(key, out _);
 
         var claims = new List<Claim>
         {
@@ -93,6 +96,13 @@ public class AccountController : Controller
         if (password != confirmPassword)
             ModelState.AddModelError("", "Passwords do not match");
 
+        if (!string.IsNullOrWhiteSpace(password) && password.Length < 8)
+            ModelState.AddModelError("Password", "Password must be at least 8 characters");
+        if (!string.IsNullOrWhiteSpace(password) && !password.Any(char.IsLetter))
+            ModelState.AddModelError("Password", "Password must contain at least one letter");
+        if (!string.IsNullOrWhiteSpace(password) && !password.Any(char.IsDigit))
+            ModelState.AddModelError("Password", "Password must contain at least one number");
+
         if (ModelState.IsValid)
         {
             var exists = await _context.Users.AnyAsync(u => u.Email == email);
@@ -106,7 +116,7 @@ public class AccountController : Controller
             {
                 Name = name,
                 Email = email,
-                Password = HashPassword(password),
+                Password = BCrypt.Net.BCrypt.HashPassword(password),
                 AvatarUrl = avatarUrl ?? "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png",
                 CreatedAt = DateTime.UtcNow
             };
@@ -138,4 +148,11 @@ public class AccountController : Controller
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction("Login");
     }
+}
+
+public class FailedAttempt
+{
+    public int Count { get; set; }
+    public DateTime LastAttempt { get; set; } = DateTime.UtcNow;
+    public bool IsLocked => Count >= 5 && DateTime.UtcNow < LastAttempt.AddMinutes(15);
 }

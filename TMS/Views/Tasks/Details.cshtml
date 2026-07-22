@@ -85,7 +85,7 @@
                     <div class="detail-value">
                         @if (Model.DueDate.HasValue)
                         {
-                            <span class="@(Model.DueDate < DateTime.UtcNow && Model.Status != TaskItemStatus.Done ? "text-danger fw-bold" : "")">
+                            <span class="@(Model.DueDate.Value.Date < DateTime.UtcNow.Date && Model.Status != TaskItemStatus.Done ? "text-danger fw-bold" : "")">
                                 @Model.DueDate.Value.ToString("MMMM dd, yyyy")
                             </span>
                         }

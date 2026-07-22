@@ -124,7 +124,7 @@
                                     <td class="text-nowrap">
                                         @if (task.DueDate.HasValue)
                                         {
-                                            <span class="@(task.DueDate < DateTime.UtcNow && task.Status != TMS.Models.TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
+                                            <span class="@(task.DueDate.Value.Date < DateTime.UtcNow.Date && task.Status != TMS.Models.TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
                                                 @task.DueDate.Value.ToString("MMM dd, yyyy")
                                             </span>
                                         }

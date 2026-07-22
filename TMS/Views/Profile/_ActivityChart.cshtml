@@ -1,0 +1,149 @@
+@model ActivityChartViewModel
+
+@{
+    var hasData = Model.DailyData.Any(d => d.Count > 0);
+}
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-chart-line me-2"></i>Activity
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: @(hasData ? "24px" : "0")">
+            <div style="text-align: center;">
+                <div style="font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--text-primary); line-height: 1.2;">
+                    @Model.CurrentStreak
+                </div>
+                <div style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; margin-top: 2px;">
+                    Day Streak
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--text-primary); line-height: 1.2;">
+                    @Model.TasksCompletedThisWeek
+                </div>
+                <div style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; margin-top: 2px;">
+                    This Week
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-family: var(--font-display); font-weight: 800; font-size: 26px; color: var(--text-primary); line-height: 1.2;">
+                    @Model.CompletionRate%
+                </div>
+                <div style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; margin-top: 2px;">
+                    Completion Rate
+                </div>
+            </div>
+        </div>
+
+        @if (hasData)
+        {
+            <div style="position: relative; height: 200px;">
+                <canvas id="activityChart"></canvas>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state" style="padding: 24px 24px 8px;">
+                <i class="fas fa-chart-line"></i>
+                <h5>No activity yet</h5>
+                <p>Complete your first task to see your activity chart here.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@if (hasData)
+{
+    <script>
+        (function () {
+            function initChart() {
+                var canvas = document.getElementById('activityChart');
+                if (!canvas) return;
+                if (typeof Chart === 'undefined') { setTimeout(initChart, 100); return; }
+
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                var ctx = canvas.getContext('2d');
+                var areaGradient = ctx.createLinearGradient(0, 0, 0, 200);
+                areaGradient.addColorStop(0, isDark ? 'rgba(108,92,231,0.35)' : 'rgba(108,92,231,0.25)');
+                areaGradient.addColorStop(1, 'rgba(108,92,231,0)');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: @Html.Raw(ViewBag.ChartLabelsJson),
+                        datasets: [{
+                            data: @Html.Raw(ViewBag.ChartDataJson),
+                            borderColor: '#6C5CE7',
+                            backgroundColor: areaGradient,
+                            borderWidth: 2.5,
+                            tension: 0.35,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#6C5CE7',
+                            pointHoverBorderColor: '#FFFFFF',
+                            pointHoverBorderWidth: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 400, easing: 'easeOutQuart' },
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: isDark ? '#191922' : '#FFFFFF',
+                                titleColor: isDark ? '#FFFFFF' : '#171724',
+                                bodyColor: isDark ? '#FFFFFF' : '#171724',
+                                borderColor: isDark ? '#2B2B38' : '#E7E7F1',
+                                borderWidth: 1,
+                                cornerRadius: 12,
+                                padding: 12,
+                                boxPadding: 6,
+                                titleFont: { size: 12, weight: '600' },
+                                bodyFont: { size: 14, weight: '700' },
+                                displayColors: false,
+                                callbacks: {
+                                    title: function (items) {
+                                        var d = new Date(items[0].label + 'T00:00:00');
+                                        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                    },
+                                    label: function (item) {
+                                        return item.raw + ' task' + (item.raw !== 1 ? 's' : '') + ' completed';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: isDark ? '#6E6D82' : '#91909F',
+                                    font: { size: 11, family: "'Inter', sans-serif" },
+                                    maxTicksLimit: 7,
+                                    callback: function (val, idx) {
+                                        var d = new Date(this.getLabelForValue(val) + 'T00:00:00');
+                                        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: isDark ? '#2B2B38' : '#E7E7F1', drawBorder: false },
+                                ticks: {
+                                    color: isDark ? '#6E6D82' : '#91909F',
+                                    font: { size: 11, family: "'Inter', sans-serif" },
+                                    stepSize: 1,
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            initChart();
+        })();
+    </script>
+}

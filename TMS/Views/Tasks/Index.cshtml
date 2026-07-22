@@ -5,22 +5,27 @@
 
 <div class="filter-bar">
     <form asp-action="Index" method="get" class="d-flex gap-3 flex-wrap align-items-center w-100">
+        <input type="hidden" name="page" value="1" />
         <div>
             <label class="form-label mb-0">Status</label>
-            <select name="status" asp-items="ViewBag.Statuses" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="status" asp-items="ViewBag.Statuses" class="form-select form-select-sm">
                 <option value="">All Statuses</option>
             </select>
         </div>
         <div>
             <label class="form-label mb-0">Category</label>
-            <select name="categoryId" asp-items="ViewBag.Categories" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="categoryId" asp-items="ViewBag.Categories" class="form-select form-select-sm">
                 <option value="">All Categories</option>
             </select>
         </div>
         <div>
-            <label class="form-label mb-0">Assignee</label>
-            <select name="userId" asp-items="ViewBag.Users" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">All Members</option>
+            <label class="form-label mb-0">Sort By</label>
+            <select name="sort" class="form-select form-select-sm">
+                <option value="">Newest</option>
+                <option value="created" selected="@(ViewBag.Sort == "created")">Oldest</option>
+                <option value="dueDate" selected="@(ViewBag.Sort == "dueDate")">Due Date (Earliest)</option>
+                <option value="dueDateDesc" selected="@(ViewBag.Sort == "dueDateDesc")">Due Date (Latest)</option>
+                <option value="priority" selected="@(ViewBag.Sort == "priority")">Priority (Highest)</option>
             </select>
         </div>
         <div class="d-flex gap-2 align-items-end">
@@ -33,16 +38,15 @@
 <div class="table-container">
     <div class="table-header">
         <h5><i class="fas fa-list-check me-2"></i>All Tasks</h5>
-        <span class="text-muted small">@Model.Count task(s)</span>
+        <span class="text-muted small">@ViewBag.TotalCount task(s)</span>
     </div>
     <table class="table" id="taskTable">
         <thead>
             <tr>
-                <th style="width: 30%;">Task</th>
+                <th style="width: 35%;">Task</th>
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Category</th>
-                <th>Assignee</th>
                 <th>Due Date</th>
                 <th style="width: 100px;">Actions</th>
             </tr>
@@ -51,7 +55,7 @@
             @if (!Model.Any())
             {
                 <tr>
-                    <td colspan="7">
+                    <td colspan="6">
                         <div class="empty-state">
                             <i class="fas fa-list-check"></i>
                             <h5>No tasks found</h5>
@@ -97,23 +101,10 @@
                             <span class="text-muted">—</span>
                         }
                     </td>
-                    <td>
-                        @if (task.User != null)
-                        {
-                            <div class="user-cell">
-                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
-                                <span>@task.User.Name</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <span class="text-muted">Unassigned</span>
-                        }
-                    </td>
                     <td class="text-nowrap">
                         @if (task.DueDate.HasValue)
                         {
-                            <span class="@(task.DueDate < DateTime.UtcNow && task.Status != TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
+                            <span class="@(task.DueDate.Value.Date < DateTime.UtcNow.Date && task.Status != TaskItemStatus.Done ? "text-danger fw-semibold" : "")">
                                 @task.DueDate.Value.ToString("MMM dd, yyyy")
                             </span>
                         }
@@ -149,4 +140,47 @@
             }
         </tbody>
     </table>
+    @{
+        var totalPages = (int)ViewBag.TotalPages;
+        var page = (int)ViewBag.Page;
+        var pageSize = (int)ViewBag.PageSize;
+        var totalCount = (int)ViewBag.TotalCount;
+    }
+    @if (totalPages > 1)
+    {
+        <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top: 1px solid var(--border);">
+            <small class="text-muted">Showing @(((page - 1) * pageSize) + 1)-@Math.Min(page * pageSize, totalCount) of @totalCount</small>
+            <nav>
+                <ul class="pagination mb-0" style="gap: 4px;">
+                    @{
+                        var routeParams = new Dictionary<string, string>
+                        {
+                            { "search", ViewBag.Search as string ?? "" },
+                            { "status", (ViewBag.StatusFilter as TaskItemStatus?)?.ToString() ?? "" },
+                            { "categoryId", (ViewBag.CategoryFilter as int?)?.ToString() ?? "" },
+                            { "sort", ViewBag.Sort as string ?? "" }
+                        };
+                    }
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a asp-action="Index" asp-route-page="@(page - 1)" asp-all-route-data="@routeParams" class="page-link" style="border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--text-secondary); background: var(--surface);">&laquo;</a>
+                    </li>
+                    @for (var i = 1; i <= totalPages; i++)
+                    {
+                        <li class="page-item @(i == page ? "active" : "")">
+                            <a asp-action="Index" asp-route-page="@i" asp-all-route-data="@routeParams" class="page-link" style="border-radius: var(--radius-sm); border: 1px solid var(--border); @(i == page ? "background: var(--primary); color: #fff; border-color: var(--primary);" : "color: var(--text-secondary); background: var(--surface);")">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                        <a asp-action="Index" asp-route-page="@(page + 1)" asp-all-route-data="@routeParams" class="page-link" style="border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--text-secondary); background: var(--surface);">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+    else
+    {
+        <div class="px-3 py-3" style="border-top: 1px solid var(--border);">
+            <small class="text-muted">@totalCount task(s)</small>
+        </div>
+    }
 </div>

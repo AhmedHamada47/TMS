@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TMS.Data;
 using TMS.Models;
 
@@ -16,9 +17,15 @@ public class CategoriesController : Controller
         _context = context;
     }
 
+    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     public async Task<IActionResult> Index()
     {
-        var categories = await _context.Categories.Include(c => c.Tasks).OrderBy(c => c.Name).ToListAsync();
+        var categories = await _context.Categories
+            .Include(c => c.Tasks)
+            .Where(c => c.UserId == CurrentUserId)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
         return View(categories);
     }
 
@@ -33,6 +40,7 @@ public class CategoriesController : Controller
     {
         if (ModelState.IsValid)
         {
+            category.UserId = CurrentUserId;
             category.CreatedAt = DateTime.UtcNow;
             _context.Add(category);
             await _context.SaveChangesAsync();
@@ -46,7 +54,7 @@ public class CategoriesController : Controller
     {
         if (id == null) return NotFound();
 
-        var category = await _context.Categories.FindAsync(id);
+        var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
         if (category == null) return NotFound();
 
         return View(category);
@@ -58,9 +66,15 @@ public class CategoriesController : Controller
     {
         if (id != category.Id) return NotFound();
 
+        var existing = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
+        if (existing == null) return NotFound();
+
         if (ModelState.IsValid)
         {
-            _context.Update(category);
+            existing.Name = category.Name;
+            existing.Description = category.Description;
+            existing.Color = category.Color;
+
             await _context.SaveChangesAsync();
             TempData["Success"] = "Category updated successfully!";
             return RedirectToAction(nameof(Index));
@@ -72,7 +86,7 @@ public class CategoriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var category = await _context.Categories.FindAsync(id);
+        var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
         if (category != null)
         {
             _context.Categories.Remove(category);

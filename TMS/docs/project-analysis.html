@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow (TMS) — Complete Project Analysis</title>
+<style>
+  :root {
+    --primary: #6C5CE7;
+    --bg: #f5f5fa;
+    --surface: #fff;
+    --border: #e7e7f1;
+    --text: #171724;
+    --text-secondary: #5b5b72;
+    --green: #17B26A;
+    --red: #F04438;
+    --orange: #F79009;
+    --blue: #4C6FFF;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 32px; line-height: 1.6; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 12px; }
+  h1 i { color: var(--primary); }
+  .subtitle { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  h3 { font-size: 16px; font-weight: 700; margin: 20px 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .card p { margin-bottom: 8px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px; }
+  .tag.cs { background: #edeafe; color: var(--primary); }
+  .tag.html { background: #e6f9ef; color: var(--green); }
+  .tag.js { background: #fef3e1; color: var(--orange); }
+  .tag.css { background: #eaefff; color: var(--blue); }
+  .tag.json { background: #feeceb; color: var(--red); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: #fafafd; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+  .rating { display: flex; gap: 2px; }
+  .rating .fill { color: var(--primary); }
+  .rating .empty { color: var(--border); }
+  .issue { border-left: 4px solid var(--red); padding-left: 16px; margin: 12px 0; }
+  .fix { border-left: 4px solid var(--green); padding-left: 16px; margin: 12px 0; }
+  .improvement { border-left: 4px solid var(--orange); padding-left: 16px; margin: 12px 0; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .badge.green { background: #e6f9ef; color: var(--green); }
+  .badge.red { background: #feeceb; color: var(--red); }
+  .badge.orange { background: #fef3e1; color: var(--orange); }
+  .badge.blue { background: #eaefff; color: var(--blue); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+  .summary-card .num { font-size: 28px; font-weight: 800; color: var(--primary); }
+  .summary-card .label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  pre { background: #f0f0f6; border-radius: 10px; padding: 14px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 8px 0; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  .file-path { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-secondary); background: #f0f0f6; padding: 2px 8px; border-radius: 6px; }
+  .flow-arrow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .flow-arrow .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 600; }
+  .flow-arrow .arrow { color: var(--text-secondary); font-size: 18px; }
+  .nav-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .nav-links a { color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
+  .nav-links a:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin: 16px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; white-space: pre; overflow-x: auto; }
+  .score { font-size: 48px; font-weight: 800; color: var(--primary); text-align: center; padding: 20px; }
+  .score-label { text-align: center; font-size: 14px; color: var(--text-secondary); font-weight: 600; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } body { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1><i class="fas fa-tasks"></i> TaskFlow (TMS) — Project Analysis</h1>
+<p class="subtitle">Comprehensive architecture, code review, quality ratings, problem identification, and fix recommendations. Generated July 23, 2026.</p>
+
+<div class="nav-links">
+  <a href="#overview">Overview</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#models">Models</a>
+  <a href="#database">Database</a>
+  <a href="#controllers">Controllers</a>
+  <a href="#views">Views</a>
+  <a href="#viewmodels">ViewModels</a>
+  <a href="#viewcomponents">ViewComponent</a>
+  <a href="#static">Static Files</a>
+  <a href="#config">Configuration</a>
+  <a href="#problems">Problems &amp; Fixes</a>
+  <a href="#rating">Ratings</a>
+</div>
+
+<!-- ============= OVERVIEW ============= -->
+<h2 id="overview"><i class="fas fa-info-circle"></i> 1. Project Overview</h2>
+<div class="card">
+  <p><strong>TaskFlow</strong> (TMS — Task Management System) is an <strong>ASP.NET Core 9.0 MVC</strong> web application for managing personal tasks with multi-user support. It uses <strong>SQLite</strong> via <strong>Entity Framework Core 9.0</strong> for data storage, <strong>custom cookie authentication</strong> (no ASP.NET Core Identity), and <strong>BCrypt.Net-Next</strong> for password hashing.</p>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="num">3</div><div class="label">Models</div></div>
+  <div class="summary-card"><div class="num">5</div><div class="label">Controllers</div></div>
+  <div class="summary-card"><div class="num">21</div><div class="label">View Files</div></div>
+  <div class="summary-card"><div class="num">5</div><div class="label">ViewModels</div></div>
+  <div class="summary-card"><div class="num">1</div><div class="label">ViewComponent</div></div>
+  <div class="summary-card"><div class="num">1</div><div class="label">DbContext</div></div>
+  <div class="summary-card"><div class="num">2</div><div class="label">Static Files (css/js)</div></div>
+  <div class="summary-card"><div class="num">47</div><div class="label">Total Source Files</div></div>
+</div>
+
+<!-- ============= ARCHITECTURE ============= -->
+<h2 id="architecture"><i class="fas fa-sitemap"></i> 2. Architecture &amp; Request Flow</h2>
+
+<div class="card">
+  <h3>High-Level Architecture</h3>
+  <div class="diagram">┌─────────────────────────────────────────────────────────┐
+│                    Browser / Client                      │
+└──────────────────┬──────────────────────────────────────┘
+                   │ HTTP (localhost:5213)
+                   ▼
+┌─────────────────────────────────────────────────────────┐
+│                  ASP.NET Core 9.0 Kestrel                │
+│  ┌───────────┐  ┌────────────────┐  ┌────────────────┐  │
+│  │ Middleware │  │  MVC Pipeline │  │  Static Files  │  │
+│  │ - Auth     │  │  Controllers  │  │  /css, /js     │  │
+│  │ - Https    │  │  Views        │  │                │  │
+│  │ - Routing  │  │  ViewModels   │  │                │  │
+│  └───────────┘  └───────┬────────┘  └────────────────┘  │
+└──────────────────────────┼──────────────────────────────┘
+                           │ DI (Scoped: AppDbContext)
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│              Entity Framework Core 9.0                   │
+│              SQLite (tms.db)                             │
+│              Migrations / Auto-Migrate on Start          │
+└─────────────────────────────────────────────────────────┘</div>
+</div>
+
+<div class="card">
+  <h3>Request Lifecycle</h3>
+  <div class="flow-arrow">
+    <span class="step">Request</span>
+    <span class="arrow">→</span>
+    <span class="step">Program.cs Middleware<br>(HttpsRedirection → StaticFiles → Routing → Auth → Authorization)</span>
+    <span class="arrow">→</span>
+    <span class="step">Controller Action<br>(e.g. HomeController.Index)</span>
+    <span class="arrow">→</span>
+    <span class="step">AppDbContext<br>EF Core queries</span>
+    <span class="arrow">→</span>
+    <span class="step">View (.cshtml)<br>+ Layout, ViewComponent</span>
+    <span class="arrow">→</span>
+    <span class="step">HTML Response</span>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Middleware Pipeline (Program.cs)</h3>
+    <table>
+      <tr><th>Order</th><th>Middleware</th></tr>
+      <tr><td>1</td><td><code>app.UseSwagger()</code> (dev only)</td></tr>
+      <tr><td>2</td><td><code>app.UseSwaggerUI()</code> (dev only)</td></tr>
+      <tr><td>3</td><td><code>app.UseHttpsRedirection()</code></td></tr>
+      <tr><td>4</td><td><code>app.UseStaticFiles()</code></td></tr>
+      <tr><td>5</td><td><code>app.UseRouting()</code></td></tr>
+      <tr><td>6</td><td><code>app.UseAuthentication()</code></td></tr>
+      <tr><td>7</td><td><code>app.UseAuthorization()</code></td></tr>
+      <tr><td>8</td><td><code>MapControllerRoute(...)</code></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Services Registered</h3>
+    <table>
+      <tr><th>Service</th><th>Lifetime</th></tr>
+      <tr><td><code>AddAuthentication(Cookie)</code></td><td>Singleton scheme</td></tr>
+      <tr><td><code>AddControllersWithViews()</code></td><td>Per-request</td></tr>
+      <tr><td><code>AddDbContext&lt;AppDbContext&gt;</code></td><td>Scoped</td></tr>
+      <tr><td><code>AddEndpointsApiExplorer()</code></td><td>Singleton</td></tr>
+      <tr><td><code>AddSwaggerGen()</code></td><td>Singleton</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============= MODELS ============= -->
+<h2 id="models"><i class="fas fa-cube"></i> 3. Entity Models (Data Layer)</h2>
+
+<div class="card">
+  <h3>Entity Relationship Diagram</h3>
+  <div class="diagram">┌──────────────────┐       ┌──────────────────────┐       ┌──────────────────┐
+│      User        │       │      TaskItem        │       │    Category      │
+├──────────────────┤       ├──────────────────────┤       ├──────────────────┤
+│ PK Id (int)      │◄──────┤ FK UserId (int?)     │       │ PK Id (int)      │
+│ Name (string100) │       │ FK CategoryId (int?) │──────►│ Name (string100) │
+│ Email (unique)   │       │ Title (string200)    │       │ Description?     │
+│ Password (bcrypt)│       │ Description?         │       │ Color (hex)      │
+│ AvatarUrl?       │       │ Status (enum)        │       │ FK UserId (int)  │
+│ CreatedAt (UTC)  │       │ Priority (enum)      │       │ CreatedAt (UTC)  │
+│ Tasks (nav)      │       │ CreatedAt (UTC)      │       │ Tasks (nav)      │
+└──────────────────┘       │ UpdatedAt? (UTC)    │       └──────────────────┘
+                           │ DueDate? (UTC)       │
+                           └──────────────────────┘</div>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <h3>User <span class="tag cs">Models/User.cs</span></h3>
+    <table>
+      <tr><th>Property</th><th>Type</th><th>Constraints</th></tr>
+      <tr><td>Id</td><td>int</td><td>PK, auto-increment</td></tr>
+      <tr><td>Name</td><td>string</td><td>Required, max 100</td></tr>
+      <tr><td>Email</td><td>string</td><td>Required, unique index</td></tr>
+      <tr><td>Password</td><td>string</td><td>BCrypt hash, max 200</td></tr>
+      <tr><td>AvatarUrl</td><td>string?</td><td>max 500</td></tr>
+      <tr><td>CreatedAt</td><td>DateTime</td><td>Default: UtcNow</td></tr>
+      <tr><td>Tasks</td><td>ICollection</td><td>Nav property</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>TaskItem <span class="tag cs">Models/TaskItem.cs</span></h3>
+    <table>
+      <tr><th>Property</th><th>Type</th><th>Constraints</th></tr>
+      <tr><td>Id</td><td>int</td><td>PK, auto-increment</td></tr>
+      <tr><td>Title</td><td>string</td><td>Required, max 200</td></tr>
+      <tr><td>Description</td><td>string?</td><td>-</td></tr>
+      <tr><td>Status</td><td>enum (ToDo/InProgress/Done)</td><td>Default: ToDo</td></tr>
+      <tr><td>Priority</td><td>enum (Low/Medium/High/Urgent)</td><td>Default: Medium</td></tr>
+      <tr><td>CreatedAt</td><td>DateTime</td><td>Default: UtcNow</td></tr>
+      <tr><td>UpdatedAt</td><td>DateTime?</td><td>-</td></tr>
+      <tr><td>DueDate</td><td>DateTime?</td><td>-</td></tr>
+      <tr><td>CategoryId</td><td>int?</td><td>FK → Category (SET NULL)</td></tr>
+      <tr><td>UserId</td><td>int?</td><td>FK → User (SET NULL)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Category <span class="tag cs">Models/Category.cs</span></h3>
+    <table>
+      <tr><th>Property</th><th>Type</th><th>Constraints</th></tr>
+      <tr><td>Id</td><td>int</td><td>PK, auto-increment</td></tr>
+      <tr><td>Name</td><td>string</td><td>Required, max 100, unique</td></tr>
+      <tr><td>Description</td><td>string?</td><td>max 500</td></tr>
+      <tr><td>Color</td><td>string</td><td>hex, max 7, default #6c757d</td></tr>
+      <tr><td>UserId</td><td>int</td><td>FK → User (CASCADE)</td></tr>
+      <tr><td>CreatedAt</td><td>DateTime</td><td>Default: UtcNow</td></tr>
+      <tr><td>Tasks</td><td>ICollection</td><td>Nav property</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============= DATABASE ============= -->
+<h2 id="database"><i class="fas fa-database"></i> 4. Database &amp; EF Core Configuration</h2>
+
+<div class="card">
+  <h3>AppDbContext <span class="file-path">Data/AppDbContext.cs</span></h3>
+  <p><strong>DbSets:</strong> <code>Tasks</code>, <code>Categories</code>, <code>Users</code></p>
+  <p><strong>Indexes:</strong> Status, Priority, DueDate, CategoryId, UserId, CreatedAt on Tasks; Name (unique) on Categories; Email (unique) on Users</p>
+  <p><strong>Relationships:</strong> Task → Category (SetNull), Task → User (SetNull), Category → User (Cascade)</p>
+  <p><strong>Seed Data:</strong> 3 users (BCrypt hashed passwords), 5 categories, 8 tasks with fixed UTC dates</p>
+  <p><strong>Migration:</strong> Auto-applied on startup via <code>Database.Migrate()</code> in Program.cs</p>
+</div>
+
+<div class="card">
+  <h3>Seed Data Details</h3>
+  <table>
+    <tr><th>Users</th><td>Ahmed Hamada (ahmed@tms.com), Sara Ali (sara@tms.com), Mohamed Hassan (mohamed@tms.com) — all with password <code>123456</code></td></tr>
+    <tr><th>Categories</th><td>Development, Design, Marketing, Meeting, Research — all owned by User 1 (Ahmed)</td></tr>
+    <tr><th>Tasks</th><td>8 tasks across different users, statuses, priorities, and categories</td></tr>
+  </table>
+</div>
+
+<!-- ============= CONTROLLERS ============= -->
+<h2 id="controllers"><i class="fas fa-code"></i> 5. Controllers — Detailed Breakdown</h2>
+
+<div class="card">
+  <h3>AccountController <span class="file-path">Controllers/AccountController.cs</span> <span class="badge orange">158 lines</span></h3>
+  <p>Handles authentication: Login (GET/POST), Register (GET/POST), Logout (POST).</p>
+  <table>
+    <tr><th>Action</th><th>Method</th><th>Key Logic</th></tr>
+    <tr><td>Login GET</td><td>HttpGet</td><td>Redirects to Home if already authenticated</td></tr>
+    <tr><td>Login POST</td><td>HttpPost</td><td>Validates credentials, checks brute-force lockout (ConcurrentDictionary), BCrypt.Verify, creates ClaimsIdentity, signs in</td></tr>
+    <tr><td>Register GET</td><td>HttpGet</td><td>Redirects to Home if already authenticated</td></tr>
+    <tr><td>Register POST</td><td>HttpPost</td><td>Validates password rules (8+ chars, letter, digit), checks email uniqueness, hashes password with BCrypt, creates user, signs in</td></tr>
+    <tr><td>Logout POST</td><td>HttpPost</td><td>Signs out and redirects to Login</td></tr>
+  </table>
+  <p><strong>Brute-force protection:</strong> <code>FailedAttempt</code> class with <code>ConcurrentDictionary&lt;string, FailedAttempt&gt;</code> — 5 failed attempts in 15 minutes triggers lockout.</p>
+</div>
+
+<div class="card">
+  <h3>HomeController <span class="file-path">Controllers/HomeController.cs</span> <span class="badge green">59 lines</span></h3>
+  <p>Dashboard with 11 parallel DB queries via <code>Task.WhenAll</code>.</p>
+  <table>
+    <tr><th>Query</th><th>Description</th></tr>
+    <tr><td>totalTasksTask</td><td>Count all tasks</td></tr>
+    <tr><td>toDoTask</td><td>Count tasks with Status == ToDo</td></tr>
+    <tr><td>inProgressTask</td><td>Count tasks with Status == InProgress</td></tr>
+    <tr><td>doneTask</td><td>Count tasks with Status == Done</td></tr>
+    <tr><td>urgentTask</td><td>Count urgent + not done</td></tr>
+    <tr><td>overdueTask</td><td>Count due date past + not done</td></tr>
+    <tr><td>usersTask</td><td>Count all users</td></tr>
+    <tr><td>categoriesTask</td><td>Count all categories</td></tr>
+    <tr><td>recentTask</td><td>Top 5 recent tasks (with Category + User includes)</td></tr>
+    <tr><td>upcomingTask</td><td>Top 5 upcoming deadlines</td></tr>
+    <tr><td>categorySummariesTask</td><td>Category + task counts</td></tr>
+  </table>
+  <p><strong>⚠ Issue:</strong> Dashboard queries are <strong>not scoped to the current user</strong> — they show global stats across all users.</p>
+</div>
+
+<div class="card">
+  <h3>TasksController <span class="file-path">Controllers/TasksController.cs</span> <span class="badge orange">214 lines</span></h3>
+  <table>
+    <tr><th>Action</th><th>Key Logic</th></tr>
+    <tr><td>Index</td><td>Paginated list with search, status/category/sort filters. Scoped to <code>CurrentUserId</code>. Uses <code>asp-all-route-data</code> to preserve filters in pagination links.</td></tr>
+    <tr><td>Details</td><td>Single task with ownership check</td></tr>
+    <tr><td>Create (GET)</td><td>Populates category dropdown for current user</td></tr>
+    <tr><td>Create (POST)</td><td>Sets UserId from claims, saves, redirects</td></tr>
+    <tr><td>Edit (GET)</td><td>Ownership check, maps to TaskViewModel</td></tr>
+    <tr><td>Edit (POST)</td><td>Ownership check, updates fields + UpdatedAt</td></tr>
+    <tr><td>UpdateStatus</td><td>Inline status change with ownership check</td></tr>
+    <tr><td>Delete (GET)</td><td>Shows confirmation with ownership check</td></tr>
+    <tr><td>DeleteConfirmed</td><td>Ownership check, removes, redirects</td></tr>
+  </table>
+  <p><strong>Key detail:</strong> All data-modifying actions check <code>t.UserId == CurrentUserId</code> before operating.</p>
+</div>
+
+<div class="card">
+  <h3>CategoriesController <span class="file-path">Controllers/CategoriesController.cs</span> <span class="badge green">99 lines</span></h3>
+  <table>
+    <tr><th>Action</th><th>Key Logic</th></tr>
+    <tr><td>Index</td><td>Lists categories scoped to current user, includes task count</td></tr>
+    <tr><td>Create (GET)</td><td>Empty form</td></tr>
+    <tr><td>Create (POST)</td><td>Sets UserId + CreatedAt, saves</td></tr>
+    <tr><td>Edit (GET)</td><td>Ownership check</td></tr>
+    <tr><td>Edit (POST)</td><td>Fetches existing, updates only Name/Description/Color (preserves CreatedAt)</td></tr>
+    <tr><td>Delete</td><td>Ownership check, removes</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h3>ProfileController <span class="file-path">Controllers/ProfileController.cs</span> <span class="badge orange">165 lines</span></h3>
+  <table>
+    <tr><th>Action</th><th>Key Logic</th></tr>
+    <tr><td>Index</td><td>Shows user profile with SVGs, stats, activity chart data (30-day streak), JSON-serialized chart data via ViewBag</td></tr>
+    <tr><td>Edit (GET)</td><td>AsNoTracking for read-only display</td></tr>
+    <tr><td>Edit (POST)</td><td>Checks email uniqueness, wraps SaveChangesAsync in try/catch (DbUpdateException), then re-signs in with fresh claims</td></tr>
+    <tr><td>ChangePassword (GET)</td><td>Empty form with ChangePasswordViewModel</td></tr>
+    <tr><td>ChangePassword (POST)</td><td>Verifies current password with BCrypt, validates strength, hashes new password, saves</td></tr>
+  </table>
+</div>
+
+<!-- ============= VIEWS ============= -->
+<h2 id="views"><i class="fas fa-eye"></i> 6. Views &amp; UI</h2>
+
+<div class="card">
+  <h3>Layout &amp; Shell <span class="file-path">Views/Shared/_Layout.cshtml</span></h3>
+  <p>HTML shell with sidebar (via ViewComponent), topbar (search, dark mode toggle, New Task button), temp-data alerts, Chart.js CDN.</p>
+  <p><strong>CDN dependencies:</strong> Bootstrap 5.3.3, Font Awesome 6.5.1, Chart.js 4.4.7, jQuery 3.7.1 + Validate (via _ValidationScriptsPartial)</p>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Login <span class="file-path">Views/Account/Login.cshtml</span></h3>
+    <p>Standalone layout (null Layout), centered login card, dark mode inline script, demo credentials hint.</p>
+  </div>
+  <div class="card">
+    <h3>Register <span class="file-path">Views/Account/Register.cshtml</span></h3>
+    <p>Standalone layout, avatar picker (2 options), password strength help text, minlength validation.</p>
+  </div>
+  <div class="card">
+    <h3>Dashboard <span class="file-path">Views/Home/Index.cshtml</span></h3>
+    <p>4 stat cards, recent tasks table, upcoming deadlines table, doughnut chart (status), horizontal bar chart (categories). Chart.js in Scripts section.</p>
+  </div>
+  <div class="card">
+    <h3>Tasks Index <span class="file-path">Views/Tasks/Index.cshtml</span></h3>
+    <p>Filter bar (status, category, sort) with debounced auto-submit, task table with inline status update + delete, pagination with asp-all-route-data.</p>
+  </div>
+  <div class="card">
+    <h3>Tasks Create/Edit <span class="file-path">Views/Tasks/Create.cshtml, Edit.cshtml</span></h3>
+    <p>Form with title, description, status, priority, due date, category dropdown. Edit includes hidden Id.</p>
+  </div>
+  <div class="card">
+    <h3>Tasks Details <span class="file-path">Views/Tasks/Details.cshtml</span></h3>
+    <p>Shows all task details including assignee avatar, created date, description.</p>
+  </div>
+  <div class="card">
+    <h3>Categories <span class="file-path">Views/Categories/*.cshtml</span></h3>
+    <p>Index: card grid with color preview, task count badges. Create/Edit: color picker + sync text input.</p>
+  </div>
+  <div class="card">
+    <h3>Profile <span class="file-path">Views/Profile/*.cshtml</span></h3>
+    <p>Index: avatar, SVG progress ring, stats, activity chart (Chart.js line), recent tasks. Edit: split layout with avatar preview. ChangePassword: standard form.</p>
+  </div>
+  <div class="card">
+    <h3>Sidebar (ViewComponent) <span class="file-path">Views/Shared/Components/Sidebar/Default.cshtml</span></h3>
+    <p>User info + avatar, nav links (Dashboard, Tasks, Categories, Profile, Logout), category list with task counts, active state detection.</p>
+  </div>
+  <div class="card">
+    <h3>Old Sidebar <span class="file-path">Views/Shared/_Sidebar.cshtml</span></h3>
+    <p>Deprecated — uses <code>@inject AppDbContext</code> directly (replaced by ViewComponent). Still present in project but not referenced by Layout.</p>
+  </div>
+</div>
+
+<!-- ============= VIEWMODELS ============= -->
+<h2 id="viewmodels"><i class="fas fa-layer-group"></i> 7. ViewModels</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>DashboardViewModel <span class="tag cs">ViewModels/DashboardViewModel.cs</span></h3>
+    <p>Properties: TotalTasks, TasksToDo, TasksInProgress, TasksDone, UrgentTasks, OverdueTasks, TotalUsers, TotalCategories, RecentTasks (List&lt;TaskItem&gt;), UpcomingTasks (List&lt;TaskItem&gt;), CategorySummaries (List&lt;CategorySummary&gt;).</p>
+  </div>
+  <div class="card">
+    <h3>SidebarViewModel + SidebarCategory <span class="tag cs">ViewModels/SidebarViewModel.cs</span></h3>
+    <p>SidebarViewModel: UserName, UserEmail, AvatarUrl, Categories, CurrentController, CurrentAction, CurrentCategoryId. SidebarCategory: Id, Name, Color, TaskCount.</p>
+  </div>
+  <div class="card">
+    <h3>TaskViewModel <span class="tag cs">ViewModels/TaskViewModel.cs</span></h3>
+    <p>Properties: Id, Title (Required, Max 200), Description, Status, Priority, DueDate (DataType.Date), CategoryId, Categories (for dropdown), Category.</p>
+  </div>
+  <div class="card">
+    <h3>ChangePasswordViewModel <span class="tag cs">ViewModels/ChangePasswordViewModel.cs</span></h3>
+    <p>Properties: CurrentPassword (Required), NewPassword (Required, Min 8), ConfirmPassword (Required, Compare).</p>
+  </div>
+  <div class="card">
+    <h3>ActivityChartViewModel + DailyActivity <span class="tag cs">ViewModels/ActivityChartViewModel.cs</span></h3>
+    <p>ActivityChartViewModel: DailyData, CurrentStreak, TasksCompletedThisWeek, CompletionRate. DailyActivity: Date (string), Count (int).</p>
+  </div>
+</div>
+
+<!-- ============= VIEWCOMPONENT ============= -->
+<h2 id="viewcomponents"><i class="fas fa-puzzle-piece"></i> 8. ViewComponent</h2>
+
+<div class="card">
+  <h3>SidebarViewComponent <span class="file-path">Components/SidebarViewComponent.cs</span></h3>
+  <p>Invoked from <code>_Layout.cshtml</code> via <code>@await Component.InvokeAsync("Sidebar")</code>. Injects <code>AppDbContext</code>, queries user info + categories (scoped to current user), builds <code>SidebarViewModel</code> with route data for active state detection, and returns <code>Default.cshtml</code> view.</p>
+  <p><strong>Replaces</strong> the old <code>_Sidebar.cshtml</code> partial which used <code>@inject</code> directly (bad practice — breaks DI separation).</p>
+</div>
+
+<!-- ============= STATIC FILES ============= -->
+<h2 id="static"><i class="fas fa-palette"></i> 9. Static Files (CSS/JS)</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>site.css <span class="file-path">wwwroot/css/site.css</span> <span class="badge blue">780 lines</span></h3>
+    <p><strong>Design System:</strong> CSS custom properties with <code>[data-theme="dark"]</code> overrides. Dark/light theme via <code>localStorage</code> key <code>taskflow-theme</code>.</p>
+    <p><strong>Key sections:</strong> Brand (violet #6C5CE7), status palette (blue/green/orange/red/teal/gray), surfaces &amp; text, shape &amp; elevation (18px radius), app shell (sidebar 264px, topbar 72px), sidebar, topbar, buttons, stat cards, tables, badges/pills, progress, empty states, forms, alerts, auth pages, scrollbars, responsive breakpoints (992px, 576px), prefers-reduced-motion.</p>
+    <p><strong>Fonts:</strong> Manrope (headings), Inter (body) — via Google Fonts.</p>
+    <p><strong>Responsive:</strong> Sidebar collapses to overlay on ≤992px, search hidden on ≤576px.</p>
+  </div>
+  <div class="card">
+    <h3>site.js <span class="file-path">wwwroot/js/site.js</span> <span class="badge orange">108 lines</span></h3>
+    <p><strong>Features:</strong></p>
+    <ul>
+      <li>Dark mode toggle with <code>localStorage</code> persistence + system preference detection</li>
+      <li>Sidebar collapse toggle with <code>localStorage</code>, auto-close on mobile click outside, responsive resize handler</li>
+      <li><code>debounce()</code> utility (250ms delay)</li>
+      <li>Sidebar <code>aria-expanded</code> attribute management for accessibility</li>
+      <li>Filter bar select elements debounced auto-submit on change</li>
+    </ul>
+    <p><strong>Uses:</strong> <code>let</code>/<code>const</code> (no var), IIFE pattern, "use strict".</p>
+  </div>
+</div>
+
+<!-- ============= CONFIG ============= -->
+<h2 id="config"><i class="fas fa-cog"></i> 10. Configuration &amp; Project Settings</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Project File <span class="file-path">TMS.csproj</span></h3>
+    <table>
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Target Framework</td><td>net9.0</td></tr>
+      <tr><td>Nullable</td><td>Enabled</td></tr>
+      <tr><td>ImplicitUsings</td><td>Enabled</td></tr>
+    </table>
+    <p><strong>Packages:</strong></p>
+    <ul>
+      <li><code>BCrypt.Net-Next</code> 4.2.0 — password hashing</li>
+      <li><code>Swashbuckle.AspNetCore</code> 6.6.2 — Swagger UI</li>
+      <li><code>Microsoft.EntityFrameworkCore.Sqlite</code> 9.0.0 — SQLite provider</li>
+      <li><code>Microsoft.EntityFrameworkCore.Design</code> 9.0.0 — EF tools (migrations)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>App Settings <span class="file-path">appsettings.json</span></h3>
+    <p><code>ConnectionStrings.DefaultConnection: "Data Source=tms.db"</code></p>
+    <p><strong>Launch Settings:</strong> 3 profiles — http (localhost:5213), https (localhost:7021), IIS Express. HTTP profile is the default.</p>
+  </div>
+</div>
+
+<!-- ============= PROBLEMS & FIXES ============= -->
+<h2 id="problems"><i class="fas fa-exclamation-triangle" style="color: var(--red);"></i> 11. Problems &amp; Recommended Fixes</h2>
+
+<div class="card">
+  <h3>🔴 Critical / High Priority</h3>
+
+  <div class="issue">
+    <p><strong>1. Dashboard shows global stats, not user-scoped</strong></p>
+    <p><span class="file-path">Controllers/HomeController.cs:21-38</span> — All 11 queries run against the entire Tasks/Users tables without <code>UserId</code> filter. A user sees task counts, user counts, and category data from all users.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add <code>.Where(t => t.UserId == currentUserId)</code> to all task queries. For user-level stats, keep the global count as the "Total Users" metric but scope task stats to the current user.
+    </div>
+  </div>
+
+  <div class="issue">
+    <p><strong>2. No CSRF on Logout POST</strong></p>
+    <p>While Logout has <code>[ValidateAntiForgeryToken]</code> in the controller, the sidebar renders a logout form. If the token is valid, this is fine — but confirm the form tag helper generates the token.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Already using <code>asp-antiforgery="true"</code> by default in form tag helpers. Verify manually. If missing, add <code>@Html.AntiForgeryToken()</code> or ensure <code>asp-controller/asp-action</code> tag helpers are used.
+    </div>
+  </div>
+
+  <div class="issue">
+    <p><strong>3. No HTTPS enforcement in production</strong></p>
+    <p><code>app.UseHttpsRedirection()</code> is called but there's no HSTS (<code>UseHsts</code>) configured. In production, passwords travel over the network.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add <code>app.UseHsts()</code> in non-development environments. Configure HSTS max-age and includeSubDomains in production.
+    </div>
+  </div>
+
+  <div class="issue">
+    <p><strong>4. Category Name unique index is global, not per-user</strong></p>
+    <p><span class="file-path">Data/AppDbContext.cs:39</span> — <code>entity.HasIndex(c => c.Name).IsUnique()</code>. This means User A cannot create a "Development" category if User B already has one (though due to ownership checks, they wouldn't see it, but the DB will reject the insert).</p>
+    <div class="fix">
+      <strong>Fix:</strong> Make the unique index composite: <code>HasIndex(c => new { c.Name, c.UserId }).IsUnique()</code>. Also need a new migration.
+    </div>
+  </div>
+
+  <div class="issue">
+    <p><strong>5. No input sanitization on task/category names</strong></p>
+    <p>User-submitted strings (Title, Description, Category Name) are stored as-is and rendered with <code>@Model.Title</code> (HTML-encoded by Razor by default). However, no server-side sanitization for XSS exists.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Razor's <code>@</code> syntax auto-encodes, but for defense-in-depth, validate input with a whitelist approach or use <code>System.Web.Security.AntiXss</code>. At minimum, ensure no raw HTML rendering (<code>@Html.Raw</code>) on user content.
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🟡 Medium Priority</h3>
+
+  <div class="improvement">
+    <p><strong>6. Lockout is per-email but stored in memory (not persisted)</strong></p>
+    <p><span class="file-path">Controllers/AccountController.cs:14</span> — <code>ConcurrentDictionary</code> resets on app restart. A sophisticated attacker could time the restart window.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Persist failed attempts in the database (<code>User.LockoutEnd</code>, <code>User.AccessFailedCount</code> columns) or use a distributed cache (Redis) for production.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>7. No audit logging</strong></p>
+    <p>No logging of who created/updated/deleted tasks or categories. <code>UpdatedAt</code> tracks the date but not <code>UpdatedBy</code>.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add <code>UpdatedByUserId</code> to TaskItem. Add an AuditLog table or Serilog structured logging for all data mutations.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>8. Password strength validation is duplicated</strong></p>
+    <p>Rules (8+ chars, letter, digit) are checked in <code>Register POST</code>, <code>ChangePassword POST</code>, and reflected in <code>ChangePasswordViewModel</code> via <code>[StringLength(200, MinimumLength = 8)]</code>. The letter/digit check is only in the controller, not in the ViewModel attributes.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Create a custom <code>[PasswordStrength]</code> validation attribute to DRY the regex checks.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>9. DbContext concurrency risk</strong></p>
+    <p>Dashboard runs 11 parallel queries via <code>Task.WhenAll</code>. While EF Core supports multiple queries in parallel on the same context, the default SQLite provider does <strong>not</strong> support multiple concurrent queries — it will throw <code>InvalidOperationException</code>.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Enable <code>Pooling=true</code> in the connection string OR remove <code>Task.WhenAll</code> and run queries sequentially. The queries are fast (simple COUNTs) so sequential is acceptable for SQLite.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>10. Profile/Index loads all user tasks into memory</strong></p>
+    <p><span class="file-path">Controllers/ProfileController.cs:26</span> — <code>.Include(u => u.Tasks)</code> loads ALL tasks for rendering stats. For users with thousands of tasks, this is slow.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Replace with aggregate queries: <code>_context.Tasks.Where(t => t.UserId == userId).GroupBy(...).Select(...)</code> to compute stats at the DB level.
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🟢 Low Priority / Polish</h3>
+
+  <div class="improvement">
+    <p><strong>11. Hardcoded avatar URLs</strong></p>
+    <p>Avatar URLs point to a specific CDN (<code>pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev</code>). If the CDN goes down, avatars break with no fallback.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add a <code>DefaultAvatarUrl</code> fallback in config or use initials-based avatar generation (e.g., <code>ui-avatars.com</code> API).
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>12. jQuery dependency for validation only</strong></p>
+    <p>The <code>_ValidationScriptsPartial</code> loads jQuery 3.7.1 + jQuery Validate + Unobtrusive just for client-side validation. This is ~87KB of JS.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Migrate to native HTML5 validation with <code>data-val-*</code> attributes and a lightweight custom validator, removing jQuery dependency.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>13. No pagination on Categories Index</strong></p>
+    <p>Categories are loaded all at once. Fine for small datasets, but could be slow with 100+ categories.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add pagination similar to Tasks Index if users can have many categories.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>14. No confirmation dialog for task Delete (inline)</strong></p>
+    <p><span class="file-path">Views/Tasks/Index.cshtml:133</span> — Inline delete uses <code>return confirm()</code>. This is fine but could be more user-friendly with a modal.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Replace the inline <code>confirm()</code> with a Bootstrap modal for consistency with the dedicated Delete page.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>15. Chart.js loaded on every page (not just dashboard/profile)</strong></p>
+    <p>Chart.js 4.4.7 (~200KB) is loaded in <code>_Layout.cshtml</code> via CDN, even on pages that don't use charts (Tasks Index, Categories, etc.).</p>
+    <div class="fix">
+      <strong>Fix:</strong> Move Chart.js script to <code>@section Scripts</code> in only the views that need it (Home/Index and Profile/Index).
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>16. <code>var</code> in inline scripts</strong></p>
+    <p><span class="file-path">Views/Home/Index.cshtml:289</span>, <span class="file-path">Views/Account/Login.cshtml:14</span> — Inline <code>script</code> blocks use <code>var</code> instead of <code>let</code>/<code>const</code>. The Register.cshtml also uses <code>var</code> in its avatar picker script.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Replace <code>var</code> with <code>let</code>/<code>const</code> in all inline scripts for consistency with <code>site.js</code>.
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>17. Old <code>_Sidebar.cshtml</code> still in project</strong></p>
+    <p>The file <code>Views/Shared/_Sidebar.cshtml</code> is replaced by the ViewComponent but still present. It's not referenced but creates confusion.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Delete <code>_Sidebar.cshtml</code> (confirmed not referenced by Layout).
+    </div>
+  </div>
+
+  <div class="improvement">
+    <p><strong>18. No favicon</strong></p>
+    <p>No <code>&lt;link rel="icon"&gt;</code> in any layout. Browsers will show a generic icon.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add a favicon.ico or SVG favicon in <code>wwwroot/</code> and reference in <code>_Layout.cshtml</code> and auth page layouts.
+    </div>
+  </div>
+</div>
+
+<!-- ============= RATINGS ============= -->
+<h2 id="rating"><i class="fas fa-star"></i> 12. Project Ratings</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>Overall Score</h3>
+    <div class="score">7.2 / 10</div>
+    <div class="score-label">Good — Production-ready with moderate improvements needed</div>
+  </div>
+  <div class="card">
+    <h3>Rating Breakdown</h3>
+    <table>
+      <tr><th>Category</th><th>Score</th><th>Notes</th></tr>
+      <tr>
+        <td>Security</td>
+        <td><span class="rating"><span class="fill">★★★★</span><span class="empty">★</span></span> 8/10</td>
+        <td>BCrypt, cookie auth, CSRF, ownership checks. Missing: HSTS, XSS defense-in-depth, per-user index on category names</td>
+      </tr>
+      <tr>
+        <td>Architecture</td>
+        <td><span class="rating"><span class="fill">★★★★</span><span class="empty">★</span></span> 7/10</td>
+        <td>Clean MVC, parallel queries, ViewComponent. Issue: SQLite concurrency with Task.WhenAll, dashboard not user-scoped</td>
+      </tr>
+      <tr>
+        <td>Code Quality</td>
+        <td><span class="rating"><span class="fill">★★★★</span><span class="empty">★</span></span> 7/10</td>
+        <td>Good naming, consistent patterns. Issues: duplicate validation logic, hardcoded values, inline var</td>
+      </tr>
+      <tr>
+        <td>UI/UX</td>
+        <td><span class="rating"><span class="fill">★★★★</span><span class="empty">★</span></span> 8/10</td>
+        <td>Excellent design system, dark mode, responsive, accessibility (aria-expanded, focus-visible). Minor polish issues</td>
+      </tr>
+      <tr>
+        <td>Performance</td>
+        <td><span class="rating"><span class="fill">★★★</span><span class="empty">★★</span></span> 6/10</td>
+        <td>Parallel queries are good but SQLite doesn't support concurrent access. Profile loads all tasks into memory. Chart.js on every page</td>
+      </tr>
+      <tr>
+        <td>Maintainability</td>
+        <td><span class="rating"><span class="fill">★★★★</span><span class="empty">★</span></span> 7/10</td>
+        <td>Good structure, ViewComponent pattern. Old _Sidebar.cshtml confusing. No audit trail, no tests</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <h3>Security Checklist</h3>
+  <table>
+    <tr><th>Category</th><th>✅ Pass</th><th>❌ Fail / Missing</th></tr>
+    <tr><td>Password hashing</td><td>BCrypt (BCrypt.Net-Next)</td><td>-</td></tr>
+    <tr><td>HTTPS</td><td>HttpsRedirection middleware</td><td>Missing HSTS</td></tr>
+    <tr><td>CSRF</td><td>ValidateAntiForgeryToken on all POST</td><td>-</td></tr>
+    <tr><td>AuthN</td><td>Cookie authentication</td><td>-</td></tr>
+    <tr><td>AuthZ</td><td>[Authorize] on all non-auth controllers</td><td>-</td></tr>
+    <tr><td>XSS</td><td>Razor auto-encodes</td><td>No input sanitization</td></tr>
+    <tr><td>SQL Injection</td><td>EF Core parameterized queries</td><td>-</td></tr>
+    <tr><td>Brute Force</td><td>In-memory lockout (ConcurrentDictionary)</td><td>Not persisted</td></tr>
+    <tr><td>Ownership checks</td><td>All data actions check UserId</td><td>Dashboard is global</td></tr>
+  </table>
+</div>
+
+<div class="card" style="margin-top: 24px; text-align: center; padding: 12px;">
+  <p style="color: var(--text-secondary); font-size: 13px;">
+    Generated by opencode — TaskFlow TMS Project Analysis — July 2026
+  </p>
+</div>
+
+</div>
+</body>
+</html>

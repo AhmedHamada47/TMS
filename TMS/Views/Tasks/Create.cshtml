@@ -42,16 +42,6 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-6">
-                    <label asp-for="UserId" class="form-label">Assignee</label>
-                    <select asp-for="UserId" class="form-select">
-                        <option value="">Unassigned</option>
-                        @foreach (var user in Model.Users)
-                        {
-                            <option value="@user.Id">@user.Name</option>
-                        }
-                    </select>
-                </div>
                 <div class="col-12 d-flex gap-2 justify-content-end">
                     <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">
