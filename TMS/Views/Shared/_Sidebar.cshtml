@@ -1,13 +1,20 @@
 @inject TMS.Data.AppDbContext _context
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
 @{
-    var categoryCounts = _context.Categories.Select(c => new { c.Id, c.Name, c.Color, Count = c.Tasks.Count }).ToList();
+    var categoryCounts = _context.Categories.Select(c => new { c.Id, c.Name, c.Color, Count = c.Tasks.Count }).AsNoTracking().ToList();
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var userName = User.FindFirstValue(ClaimTypes.Name) ?? "User";
+    var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "";
+    var dbUser = userId != null ? _context.Users.AsNoTracking().FirstOrDefault(u => u.Id == int.Parse(userId)) : null;
+    var avatarUrl = dbUser?.AvatarUrl ?? "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png";
 }
 <aside class="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-logo">
+        <a asp-controller="Home" asp-action="Index" class="sidebar-logo text-decoration-none">
             <i class="fas fa-tasks"></i>
             <span>TaskFlow</span>
-        </div>
+        </a>
     </div>
     <nav class="sidebar-nav">
         <ul class="nav-list">
@@ -47,15 +54,32 @@
                     <span>Manage Categories</span>
                 </a>
             </li>
+            <li class="nav-section">Account</li>
+            <li class="nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Profile" ? "active" : "")">
+                <a asp-controller="Profile" asp-action="Index" class="nav-link">
+                    <i class="fas fa-user"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                    <button type="submit" class="nav-link" style="border: none; background: none; width: 100%; cursor: pointer;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </li>
         </ul>
     </nav>
     <div class="sidebar-footer">
-        <div class="user-info">
-            <img src="https://ui-avatars.com/api/?name=Admin+User&background=6f42c1&color=fff" alt="User" class="user-avatar" />
-            <div class="user-details">
-                <span class="user-name">Admin</span>
-                <span class="user-role">Project Manager</span>
+        <a asp-controller="Profile" asp-action="Index" class="text-decoration-none">
+            <div class="user-info">
+                <img src="@avatarUrl" alt="" class="user-avatar" />
+                <div class="user-details">
+                    <span class="user-name">@userName</span>
+                    <span class="user-role">@userEmail</span>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </aside>

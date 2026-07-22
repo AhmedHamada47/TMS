@@ -1,0 +1,93 @@
+@{
+    ViewData["Title"] = "Register";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - TaskFlow</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem("taskflow-theme");
+            var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+        })();
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>.login-card { max-width: 440px; }</style>
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-tasks"></i>
+                <h1>TaskFlow</h1>
+                <p class="text-muted">Create your account</p>
+            </div>
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert alert-danger">
+                    @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <div>@error.ErrorMessage</div>
+                    }
+                </div>
+            }
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="Enter your name" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" placeholder="Enter your email" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Create a password" required minlength="4" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" name="confirmPassword" class="form-control" placeholder="Confirm your password" required />
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Choose Avatar (optional)</label>
+                    <div class="avatar-options">
+                        <input type="hidden" name="avatarUrl" id="avatarUrl" value="" />
+                        <button type="button" class="avatar-option" data-url="https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png" style="background: #6f42c1;" onclick="selectAvatar(this)">
+                            <img src="https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />
+                        </button>
+                        <button type="button" class="avatar-option" data-url="https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Female/Number_47_ssmlmw_zlydth.png" style="background: #e83e8c;" onclick="selectAvatar(this)">
+                            <img src="https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Female/Number_47_ssmlmw_zlydth.png" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-user-plus me-2"></i> Register
+                </button>
+            </form>
+
+            <div class="text-center mt-4">
+                <small>
+                    Already have an account? <a asp-action="Login">Sign in</a>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectAvatar(el) {
+            document.querySelectorAll('.avatar-option').forEach(function(e) { e.classList.remove('selected'); });
+            el.classList.add('selected');
+            document.getElementById('avatarUrl').value = el.getAttribute('data-url');
+        }
+    </script>
+</body>
+</html>

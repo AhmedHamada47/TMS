@@ -1,0 +1,105 @@
+@model User
+@{
+    ViewData["Title"] = "My Profile";
+    var total = Model.Tasks.Count;
+    var done = Model.Tasks.Count(t => t.Status == TaskItemStatus.Done);
+    var inProgress = Model.Tasks.Count(t => t.Status == TaskItemStatus.InProgress);
+    var todo = Model.Tasks.Count(t => t.Status == TaskItemStatus.ToDo);
+    var donePct = total > 0 ? (done * 100.0 / total) : 0;
+    var progressPct = total > 0 ? (inProgress * 100.0 / total) : 0;
+    var todoPct = total > 0 ? (todo * 100.0 / total) : 0;
+    var circumference = 2 * Math.PI * 54;
+    var doneOffset = circumference - (donePct / 100.0 * circumference);
+    var progressOffset = circumference - (progressPct / 100.0 * circumference);
+}
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <img src="@Model.AvatarUrl" alt="" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;" />
+                <h4 class="fw-bold">@Model.Name</h4>
+                <p class="text-muted">@Model.Email</p>
+                <a asp-action="Edit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit me-1"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+        <div class="card mt-4 text-center">
+            <div class="card-header"><i class="fas fa-chart-pie me-2"></i>Progress</div>
+            <div class="card-body">
+                <svg width="140" height="140" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border)" stroke-width="12" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="var(--green)" stroke-width="12"
+                            stroke-dasharray="@circumference"
+                            stroke-dashoffset="@doneOffset"
+                            transform="rotate(-90 60 60)"
+                            stroke-linecap="round" />
+                    <text x="60" y="56" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text-primary)">@donePct.ToString("0")%</text>
+                    <text x="60" y="74" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Complete</text>
+                </svg>
+                <div class="d-flex justify-content-around mt-3 small">
+                    <div><span class="status-dot d-inline-block me-1" style="background: var(--green);"></span>Done (@done)</div>
+                    <div><span class="status-dot d-inline-block me-1" style="background: var(--blue);"></span>In Progress (@inProgress)</div>
+                    <div><span class="status-dot d-inline-block me-1" style="background: var(--gray);"></span>To Do (@todo)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-chart-simple me-2"></i>Statistics</div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-sm-4">
+                        <div class="stat-card p-3 text-center">
+                            <div class="stat-value">@total</div>
+                            <div class="stat-label">Total Tasks</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="stat-card p-3 text-center">
+                            <div class="stat-value">@done</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="stat-card p-3 text-center">
+                            <div class="stat-value">@(total - done)</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="fas fa-list me-2"></i>My Recent Tasks
+                <a asp-controller="Tasks" asp-action="Index" asp-route-userId="@Model.Id" class="btn btn-sm btn-outline-primary float-end">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model.Tasks.OrderByDescending(t => t.CreatedAt).Take(5))
+                        {
+                            <tr>
+                                <td><a asp-controller="Tasks" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none fw-semibold">@task.Title</a></td>
+                                <td><span class="status-badge status-@(task.Status == TaskItemStatus.ToDo ? "todo" : task.Status == TaskItemStatus.InProgress ? "progress" : "done")"><span class="status-dot"></span>@(task.Status == TaskItemStatus.InProgress ? "In Progress" : task.Status.ToString())</span></td>
+                                <td><span class="priority-badge priority-@task.Priority.ToString().ToLower()">@(task.Priority == TaskPriority.Urgent ? "Urgent" : task.Priority.ToString())</span></td>
+                                <td>@(task.DueDate?.ToString("MMM dd, yyyy") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

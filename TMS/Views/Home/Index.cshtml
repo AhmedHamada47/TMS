@@ -275,28 +275,96 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i>Task Overview
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 220px;">
+                            <canvas id="statusChart"></canvas>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            var textColor = isDark ? '#FFFFFF' : '#171724';
+            var mutedColor = isDark ? '#E0E0E0' : '#91909F';
+
+            var statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['To Do', 'In Progress', 'Done'],
+                        datasets: [{
+                            data: [@Model.TasksToDo, @Model.TasksInProgress, @Model.TasksDone],
+                            backgroundColor: ['#667085', '#4C6FFF', '#17B26A'],
+                            borderWidth: 0,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '68%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: textColor, padding: 16, usePointStyle: true, font: { size: 12 } }
+                            }
+                        }
+                    }
+                });
+            }
+
+            var catCtx = document.getElementById('categoryChart');
+            if (catCtx) {
+                new Chart(catCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [@Html.Raw(string.Join(", ", Model.CategorySummaries.Select(c => $"'{c.CategoryName}'")))],
+                        datasets: [{
+                            label: 'Tasks',
+                            data: [@string.Join(", ", Model.CategorySummaries.Select(c => c.TaskCount))],
+                            backgroundColor: [@Html.Raw(string.Join(", ", Model.CategorySummaries.Select(c => $"'{c.Color}'")))],
+                            borderRadius: 6,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: isDark ? '#2B2B38' : '#E7E7F1' },
+                                ticks: { color: mutedColor, font: { size: 11 } }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { color: textColor, font: { size: 12, weight: '600' } }
+                            }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
+}
+                </div>
+                <div class="card mt-4">
+                    <div class="card-header">
                         <i class="fas fa-chart-simple me-2"></i>Tasks by Category
                     </div>
                     <div class="card-body">
                         @if (Model.CategorySummaries.Any())
                         {
-                            var maxCount = Model.CategorySummaries.Max(c => c.TaskCount);
-                            @foreach (var cat in Model.CategorySummaries)
-                            {
-                                var pct = maxCount > 0 ? (cat.TaskCount * 100 / maxCount) : 0;
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="category-tag">
-                                            <span class="cat-dot" style="background: @cat.Color"></span>
-                                            @cat.CategoryName
-                                        </span>
-                                        <span class="fw-semibold">@cat.TaskCount</span>
-                                    </div>
-                                    <div class="progress-thin">
-                                        <div class="progress-bar" role="progressbar" style="width: @pct%; background: @cat.Color;"></div>
-                                    </div>
-                                </div>
-                            }
+                            <div style="position: relative; height: @(Model.CategorySummaries.Count * 50 + 60)px;">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
                         }
                         else
                         {

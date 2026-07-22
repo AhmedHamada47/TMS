@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using TMS.ViewModels;
 
 namespace TMS.Controllers;
 
+[Authorize]
 public class TasksController : Controller
 {
     private readonly AppDbContext _context;
@@ -16,9 +18,12 @@ public class TasksController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(TaskItemStatus? status, int? categoryId, int? userId)
+    public async Task<IActionResult> Index(string? search, TaskItemStatus? status, int? categoryId, int? userId)
     {
         var query = _context.Tasks.Include(t => t.Category).Include(t => t.User).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(t => t.Title.Contains(search) || (t.Description != null && t.Description.Contains(search)));
 
         if (status.HasValue)
             query = query.Where(t => t.Status == status.Value);
@@ -31,11 +36,12 @@ public class TasksController : Controller
 
         var tasks = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 
+        ViewBag.Search = search;
         ViewBag.StatusFilter = status;
         ViewBag.CategoryFilter = categoryId;
         ViewBag.UserFilter = userId;
-        ViewBag.Categories = new SelectList(await _context.Categories.ToListAsync(), "Id", "Name", categoryId);
-        ViewBag.Users = new SelectList(await _context.Users.ToListAsync(), "Id", "Name", userId);
+        ViewBag.Categories = new SelectList(await _context.Categories.AsNoTracking().ToListAsync(), "Id", "Name", categoryId);
+        ViewBag.Users = new SelectList(await _context.Users.AsNoTracking().ToListAsync(), "Id", "Name", userId);
         ViewBag.Statuses = new SelectList(Enum.GetValues<TaskItemStatus>().Cast<TaskItemStatus>().Select(s => new { Value = (int)s, Text = s.ToString() }), "Value", "Text", status.HasValue ? (int)status.Value : null);
 
         return View(tasks);

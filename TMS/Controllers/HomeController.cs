@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TMS.Data;
@@ -5,6 +6,7 @@ using TMS.ViewModels;
 
 namespace TMS.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly AppDbContext _context;

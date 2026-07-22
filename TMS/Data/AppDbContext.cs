@@ -24,6 +24,13 @@ public class AppDbContext : DbContext
                   .WithMany(u => u.Tasks)
                   .HasForeignKey(t => t.UserId)
                   .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(t => t.Status);
+            entity.HasIndex(t => t.Priority);
+            entity.HasIndex(t => t.DueDate);
+            entity.HasIndex(t => t.CategoryId);
+            entity.HasIndex(t => t.UserId);
+            entity.HasIndex(t => t.CreatedAt);
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -41,13 +48,21 @@ public class AppDbContext : DbContext
         SeedData(modelBuilder);
     }
 
+    private static string HashPassword(string password)
+    {
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+        return Convert.ToHexString(bytes);
+    }
+
     private static void SeedData(ModelBuilder modelBuilder)
     {
+        var pwd = HashPassword("123456");
         var users = new List<User>
         {
-            new() { Id = 1, Name = "Ahmed Hamada", Email = "ahmed@tms.com", AvatarUrl = "https://ui-avatars.com/api/?name=Ahmed+Hamada&background=6f42c1&color=fff" },
-            new() { Id = 2, Name = "Sara Ali", Email = "sara@tms.com", AvatarUrl = "https://ui-avatars.com/api/?name=Sara+Ali&background=0d6efd&color=fff" },
-            new() { Id = 3, Name = "Mohamed Hassan", Email = "mohamed@tms.com", AvatarUrl = "https://ui-avatars.com/api/?name=Mohamed+Hassan&background=198754&color=fff" },
+            new() { Id = 1, Name = "Ahmed Hamada", Email = "ahmed@tms.com", Password = pwd, AvatarUrl = "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png" },
+            new() { Id = 2, Name = "Sara Ali", Email = "sara@tms.com", Password = pwd, AvatarUrl = "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Female/Number_47_ssmlmw_zlydth.png" },
+            new() { Id = 3, Name = "Mohamed Hassan", Email = "mohamed@tms.com", Password = pwd, AvatarUrl = "https://pub-a981f7fafe3c46e98d60519aae806cf8.r2.dev/Avatar/Male/Number_21_b9m4ba_elzprp.png" },
         };
 
         var categories = new List<Category>
