@@ -24,18 +24,12 @@ A multi-user task management system built with ASP.NET Core 9.0 MVC.
 
 ```bash
 git clone <repo-url>
-cd TMS/TMS
+cd src/TMS
 dotnet restore
 dotnet run
 ```
 
-Open `http://localhost:5213` and register a new account or use seed accounts:
-
-| Email | Password | Role |
-|-------|----------|------|
-| ahmed@tms.com | Test@123 | Admin |
-| sara@tms.com | Test@123 | Employee |
-| mohamed@tms.com | Test@123 | Employee |
+Open `http://localhost:5213` and register a new account to get started.
 
 ## Project Structure
 
@@ -46,6 +40,7 @@ ViewModels/     — View-specific models
 Views/          — Razor views
 Data/           — DbContext + migrations
 wwwroot/        — Static assets (CSS, JS)
+docs/           — Project analysis documents
 ```
 
 ## License
