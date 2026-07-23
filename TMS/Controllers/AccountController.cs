@@ -18,6 +18,9 @@ public class AccountController : Controller
         _context = context;
     }
 
+    private const string OrgIdClaim = "OrganizationId";
+    private const string OrgRoleClaim = "OrganizationRole";
+
     [HttpGet]
     public IActionResult Login()
     {
@@ -60,12 +63,22 @@ public class AccountController : Controller
 
         _failedLogins.TryRemove(key, out _);
 
+        var membership = await _context.OrganizationMemberships
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.UserId == user.Id);
+
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Email, user.Email)
         };
+
+        if (membership != null)
+        {
+            claims.Add(new Claim(OrgIdClaim, membership.OrganizationId.ToString()));
+            claims.Add(new Claim(OrgRoleClaim, membership.Role.ToString()));
+        }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
@@ -85,7 +98,7 @@ public class AccountController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(string name, string email, string password, string confirmPassword, string? avatarUrl)
+    public async Task<IActionResult> Register(string name, string email, string password, string confirmPassword, string? avatarUrl, string? organizationName)
     {
         if (string.IsNullOrWhiteSpace(name))
             ModelState.AddModelError("", "Name is required");
@@ -102,6 +115,9 @@ public class AccountController : Controller
             ModelState.AddModelError("Password", "Password must contain at least one letter");
         if (!string.IsNullOrWhiteSpace(password) && !password.Any(char.IsDigit))
             ModelState.AddModelError("Password", "Password must contain at least one number");
+
+        if (string.IsNullOrWhiteSpace(organizationName))
+            ModelState.AddModelError("organizationName", "Organization name is required");
 
         if (ModelState.IsValid)
         {
@@ -124,16 +140,56 @@ public class AccountController : Controller
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
+            var existingOrg = await _context.Organizations
+                .FirstOrDefaultAsync(o => o.Name == organizationName);
+
+            OrganizationRole role;
+            int orgId;
+
+            if (existingOrg != null)
+            {
+                orgId = existingOrg.Id;
+                role = OrganizationRole.Employee;
+            }
+            else
+            {
+                var org = new Organization
+                {
+                    Name = organizationName,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Organizations.Add(org);
+                await _context.SaveChangesAsync();
+                orgId = org.Id;
+                role = OrganizationRole.Admin;
+            }
+
+            var membership = new OrganizationMembership
+            {
+                OrganizationId = orgId,
+                UserId = user.Id,
+                Role = role,
+                JoinedAt = DateTime.UtcNow
+            };
+            _context.OrganizationMemberships.Add(membership);
+            await _context.SaveChangesAsync();
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(OrgIdClaim, orgId.ToString()),
+                new Claim(OrgRoleClaim, role.ToString())
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Success"] = existingOrg != null
+                ? $"You've joined the '{organizationName}' organization!"
+                : $"Organization '{organizationName}' created successfully!";
 
             return RedirectToAction("Index", "Home");
         }

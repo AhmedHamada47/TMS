@@ -134,11 +134,14 @@
                                         }
                                     </td>
                                     <td>
-                                        @if (task.User != null)
+                                        @{
+                                            var recentAssignee = task.Assignees?.FirstOrDefault(a => a.IsPrimary)?.User ?? task.User;
+                                        }
+                                        @if (recentAssignee != null)
                                         {
                                             <div class="user-cell">
-                                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
-                                                <span>@task.User.Name</span>
+                                                <img src="@recentAssignee.AvatarUrl" alt="" class="user-avatar-sm" />
+                                                <span>@recentAssignee.Name</span>
                                             </div>
                                         }
                                         else
@@ -227,11 +230,14 @@
                                         }
                                     </td>
                                     <td>
-                                        @if (task.User != null)
+                                        @{
+                                            var upcomingAssignee = task.Assignees?.FirstOrDefault(a => a.IsPrimary)?.User ?? task.User;
+                                        }
+                                        @if (upcomingAssignee != null)
                                         {
                                             <div class="user-cell">
-                                                <img src="@task.User.AvatarUrl" alt="" class="user-avatar-sm" />
-                                                <span>@task.User.Name</span>
+                                                <img src="@upcomingAssignee.AvatarUrl" alt="" class="user-avatar-sm" />
+                                                <span>@upcomingAssignee.Name</span>
                                             </div>
                                         }
                                         else
@@ -322,11 +328,11 @@
                 new Chart(catCtx, {
                     type: 'bar',
                     data: {
-                        labels: [@Html.Raw(string.Join(", ", Model.CategorySummaries.Select(c => $"'{c.CategoryName}'")))],
+                        labels: [@string.Join(", ", Model.CategorySummaries.Select(c => JsonSerializer.Serialize(c.CategoryName)))],
                         datasets: [{
                             label: 'Tasks',
                             data: [@string.Join(", ", Model.CategorySummaries.Select(c => c.TaskCount))],
-                            backgroundColor: [@Html.Raw(string.Join(", ", Model.CategorySummaries.Select(c => $"'{c.Color}'")))],
+                            backgroundColor: [@string.Join(", ", Model.CategorySummaries.Select(c => JsonSerializer.Serialize(c.Color)))],
                             borderRadius: 6,
                             borderSkipped: false
                         }]

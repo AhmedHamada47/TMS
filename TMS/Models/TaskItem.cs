@@ -32,6 +32,26 @@ public class TaskItem
 
     [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
+
+    public int OrganizationId { get; set; }
+
+    public Organization? Organization { get; set; }
+
+    public int? BoardColumnId { get; set; }
+
+    public BoardColumn? BoardColumn { get; set; }
+
+    public int BoardOrder { get; set; }
+
+    public decimal? EstimatedHours { get; set; }
+
+    public decimal? ActualHours { get; set; }
+
+    public ICollection<TaskAssignee> Assignees { get; set; } = new List<TaskAssignee>();
+
+    public ICollection<TaskComment> Comments { get; set; } = new List<TaskComment>();
+
+    public ICollection<TaskActivityLog> ActivityLogs { get; set; } = new List<TaskActivityLog>();
 }
 
 public enum TaskItemStatus

@@ -23,6 +23,7 @@ public class ProfileController : Controller
     public async Task<IActionResult> Index()
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var orgId = int.Parse(User.FindFirstValue("OrganizationId")!);
         var user = await _context.Users.Include(u => u.Tasks).FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return NotFound();
 
@@ -30,7 +31,7 @@ public class ProfileController : Controller
         var thirtyDaysAgo = now.AddDays(-30);
 
         var doneTasks = await _context.Tasks
-            .Where(t => t.UserId == userId && t.Status == TaskItemStatus.Done)
+            .Where(t => t.OrganizationId == orgId && t.UserId == userId && t.Status == TaskItemStatus.Done)
             .ToListAsync();
 
         var dailyCounts = doneTasks
@@ -56,7 +57,7 @@ public class ProfileController : Controller
 
         var weekAgo = now.AddDays(-7);
         var tasksThisWeek = doneTasks.Count(t => (t.UpdatedAt ?? t.CreatedAt) >= weekAgo);
-        var totalTasks = await _context.Tasks.CountAsync(t => t.UserId == userId);
+        var totalTasks = await _context.Tasks.CountAsync(t => t.OrganizationId == orgId && t.UserId == userId);
         var rate = totalTasks > 0 ? Math.Round((double)doneTasks.Count / totalTasks * 100, 1) : 0;
 
         ViewBag.ActivityChart = new ActivityChartViewModel

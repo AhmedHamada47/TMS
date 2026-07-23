@@ -22,6 +22,9 @@ public class TaskViewModel
 
     public int? CategoryId { get; set; }
 
+    public int? AssigneeId { get; set; }
+
     public List<Category> Categories { get; set; } = new();
     public Category? Category { get; set; }
+    public List<User> TeamMembers { get; set; } = new();
 }

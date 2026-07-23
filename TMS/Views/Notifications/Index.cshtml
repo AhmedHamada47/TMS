@@ -1,0 +1,69 @@
+@model List<Notification>
+@{
+    ViewData["Title"] = "Notifications";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div><i class="fas fa-bell me-2"></i>Notifications</div>
+        <button id="markAllRead" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-check-double"></i> Mark All Read
+        </button>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                <p class="mb-0">No notifications yet</p>
+            </div>
+        }
+        else
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var n in Model)
+                {
+                    <a href="@(n.Link ?? "#")" class="list-group-item list-group-item-action d-flex align-items-start gap-3 @(!n.IsRead ? "fw-bold" : "")">
+                        <i class="fas @(n.IsRead ? "fa-circle-notch text-muted" : "fa-circle text-primary") mt-1" style="font-size: 0.6rem;"></i>
+                        <div class="flex-grow-1">
+                            <div>@n.Message</div>
+                            <small class="text-muted">@n.CreatedAt.ToString("g")</small>
+                        </div>
+                        @if (!n.IsRead)
+                        {
+                            <button class="btn btn-sm btn-link mark-read" data-id="@n.Id">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        }
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.mark-read').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                await fetch('/Notifications/MarkAsRead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${id}`
+                });
+                btn.closest('.list-group-item').classList.remove('fw-bold');
+                btn.querySelector('i').className = 'fas fa-check text-muted';
+                btn.remove();
+            });
+        });
+
+        document.getElementById('markAllRead')?.addEventListener('click', async () => {
+            await fetch('/Notifications/MarkAllAsRead', { method: 'POST' });
+            document.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('fw-bold'));
+            document.querySelectorAll('.mark-read').forEach(el => el.remove());
+        });
+    </script>
+}

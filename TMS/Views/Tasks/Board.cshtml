@@ -1,0 +1,116 @@
+@model BoardViewModel
+@{
+    ViewData["Title"] = Model.BoardName;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h5 class="fw-bold mb-0"><i class="fas fa-columns me-2"></i>@Model.BoardName</h5>
+        @if (!string.IsNullOrEmpty(Model.ProjectName))
+        {
+            <small class="text-muted">@Model.ProjectName</small>
+        }
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-table me-1"></i> Table View
+        </a>
+        <a asp-action="Create" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i> New Task
+        </a>
+    </div>
+</div>
+
+<div class="kanban-board" id="kanbanBoard">
+    @foreach (var column in Model.Columns)
+    {
+        <div class="kanban-column" data-column-id="@column.Id">
+            <div class="kanban-column-header">
+                <span class="kanban-column-title">@column.Name</span>
+                <span class="kanban-column-count">@column.Tasks.Count</span>
+            </div>
+            <div class="kanban-column-body" data-column-id="@column.Id">
+                @foreach (var task in column.Tasks)
+                {
+                    <div class="kanban-card" data-task-id="@task.Id" data-order="@task.BoardOrder">
+                        <div class="kanban-card-top">
+                            @if (task.Priority == TaskPriority.Urgent || task.Priority == TaskPriority.High)
+                            {
+                                <span class="priority-indicator priority-@task.Priority.ToString().ToLower()"></span>
+                            }
+                            <span class="priority-badge priority-@task.Priority.ToString().ToLower()" style="font-size: 10px; padding: 1px 6px;">
+                                @(task.Priority == TaskPriority.Urgent ? "Urgent" : task.Priority.ToString())
+                            </span>
+                        </div>
+                        <a asp-action="Details" asp-route-id="@task.Id" class="kanban-card-title text-decoration-none">
+                            @task.Title
+                        </a>
+                        @if (task.Category != null)
+                        {
+                            <div class="kanban-card-category">
+                                <span class="cat-dot" style="background: @task.Category.Color"></span>
+                                @task.Category.Name
+                            </div>
+                        }
+                        @if (task.DueDate.HasValue)
+                        {
+                            <div class="kanban-card-meta">
+                                <span class="kanban-card-due @(task.DueDate.Value.Date < DateTime.UtcNow.Date && task.Status != TaskItemStatus.Done ? "overdue" : "")">
+                                    <i class="far fa-calendar-alt"></i> @task.DueDate.Value.ToString("MMM dd")
+                                </span>
+                            </div>
+                        }
+                        <div class="kanban-card-footer">
+                            @{
+                                var cardAssignee = task.Assignees?.FirstOrDefault(a => a.IsPrimary)?.User;
+                            }
+                            @if (cardAssignee != null)
+                            {
+                                <img src="@cardAssignee.AvatarUrl" alt="@cardAssignee.Name" class="user-avatar-sm" title="@cardAssignee.Name" />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var columns = document.querySelectorAll('.kanban-column-body');
+
+            columns.forEach(function (col) {
+                new Sortable(col, {
+                    group: 'kanban',
+                    animation: 200,
+                    ghostClass: 'kanban-card-ghost',
+                    dragClass: 'kanban-card-dragging',
+                    onEnd: function (evt) {
+                        var taskId = evt.item.getAttribute('data-task-id');
+                        var targetColumn = evt.to.getAttribute('data-column-id');
+                        var order = Array.from(evt.to.children).indexOf(evt.item);
+
+                        fetch('@Url.Action("UpdateBoardPosition", "Tasks")', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            },
+                            body: 'taskId=' + taskId + '&columnId=' + targetColumn + '&order=' + order
+                        });
+
+                        if (evt.from !== evt.to) {
+                            var fromCount = evt.from.querySelectorAll('.kanban-card').length;
+                            var toCount = evt.to.querySelectorAll('.kanban-card').length;
+                            evt.from.closest('.kanban-column').querySelector('.kanban-column-count').textContent = fromCount;
+                            evt.to.closest('.kanban-column').querySelector('.kanban-column-count').textContent = toCount;
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+}

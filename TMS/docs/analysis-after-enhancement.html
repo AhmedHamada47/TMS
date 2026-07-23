@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow TMS — Analysis After Enhancement Plan</title>
+<style>
+  :root {
+    --bg: #f5f5fa;
+    --surface: #fff;
+    --border: #e7e7f1;
+    --primary: #6C5CE7;
+    --text: #171724;
+    --text-muted: #667085;
+    --green: #17B26A;
+    --yellow: #F79009;
+    --red: #F04438;
+    --blue: #4C6FFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px;
+    line-height: 1.7;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 2rem; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 1.3rem; font-weight: 700; margin: 40px 0 12px;
+    padding-bottom: 8px; border-bottom: 2px solid var(--primary);
+    letter-spacing: -0.01em;
+  }
+  h3 { font-size: 1rem; font-weight: 700; margin: 24px 0 8px; }
+  h4 { font-weight: 600; margin: 16px 0 4px; font-size: 0.95rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 32px; }
+
+  .comparison-row {
+    display: flex; gap: 16px; margin-bottom: 16px;
+  }
+  .comparison-row .before, .comparison-row .after {
+    flex: 1; padding: 16px; border-radius: 14px; border: 1px solid var(--border);
+  }
+  .comparison-row .before { background: #fef3e1; border-color: #f79009; }
+  .comparison-row .after { background: #e6f9ef; border-color: #17b26a; }
+  .comparison-row h4 { margin: 0 0 4px; }
+  .comparison-row .label-tag {
+    display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    padding: 1px 8px; border-radius: 999px; margin-bottom: 8px;
+  }
+  .comparison-row .before .label-tag { background: #f79009; color: #fff; }
+  .comparison-row .after .label-tag { background: #17b26a; color: #fff; }
+
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .meta-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+  .meta-card .value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+  .meta-card .label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+  .meta-card .vs { font-size: 0.7rem; color: var(--text-muted); margin-top: -2px; }
+
+  .rating-pair { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+  .rating-pair .label { width: 140px; font-weight: 600; font-size: 0.85rem; flex-shrink: 0; }
+  .rating-pair .tracks { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .rating-pair .track { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; position: relative; }
+  .rating-pair .track .fill { height: 100%; border-radius: 4px; transition: width .3s; }
+  .rating-pair .track .marker { position: absolute; top: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .rating-pair .scores { width: 80px; text-align: right; font-size: 0.8rem; flex-shrink: 0; }
+  .rating-pair .scores .old { color: var(--text-muted); }
+  .rating-pair .scores .new { font-weight: 700; color: var(--green); }
+
+  .phase-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 24px; margin-bottom: 16px; position: relative;
+  }
+  .phase-card .phase-number {
+    position: absolute; top: -10px; left: 20px;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 0.75rem;
+    padding: 2px 12px; border-radius: 999px;
+  }
+  .phase-card h3 { margin-top: 4px; }
+  .phase-card ul { padding-left: 20px; font-size: 0.88rem; margin: 6px 0; }
+  .phase-card .impact {
+    margin-top: 8px; font-size: 0.82rem; padding: 6px 12px; border-radius: 8px;
+  }
+  .impact-high { background: #e6f9ef; border-left: 3px solid var(--green); }
+  .impact-med { background: #eaf0ff; border-left: 3px solid var(--blue); }
+  .impact-low { background: #fef3e1; border-left: 3px solid var(--yellow); }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 700; background: var(--surface); }
+
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+  }
+  .badge-a { background: #e6f9ef; color: #067647; }
+  .badge-b { background: #eaf0ff; color: #184cca; }
+  .badge-c { background: #fef3e1; color: #a35100; }
+  .badge-d { background: #feebeb; color: #b42318; }
+
+  .summary-box {
+    background: var(--surface); border: 2px solid var(--primary); border-radius: 16px;
+    padding: 24px; margin: 24px 0; text-align: center;
+  }
+  .summary-box .big { font-size: 3rem; font-weight: 800; color: var(--primary); }
+  .summary-box .sub { color: var(--text-muted); font-size: 0.95rem; }
+  .summary-box .delta { color: var(--green); font-weight: 700; }
+
+  .rec-list { list-style: none; padding: 0; }
+  .rec-list li {
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--green); border-radius: 8px; margin-bottom: 8px;
+    font-size: 0.88rem;
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 16px; }
+    .comparison-row { flex-direction: column; }
+    .meta-grid { grid-template-columns: repeat(2, 1fr); }
+    .rating-pair { flex-wrap: wrap; }
+    .rating-pair .label { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>TaskFlow TMS &mdash; Post-Enhancement Analysis</h1>
+<div class="subtitle">Target state after executing the full improvement roadmap &middot; July 23, 2026</div>
+
+<div class="summary-box">
+  <div class="big">86 &rarr; 94</div>
+  <div class="sub">Project Score Improvement &middot; <span class="delta">+8 points</span></div>
+</div>
+
+<div class="comparison-row">
+  <div class="before">
+    <div class="label-tag">Before (Current)</div>
+    <strong>86 / 100 &middot; B+</strong>
+    <p style="margin: 6px 0 0; font-size:0.85rem; color:var(--text-muted)">
+      Strong foundation. Production-ready for small teams but missing tests, service layer, email, and real-time features.
+    </p>
+  </div>
+  <div class="after">
+    <div class="label-tag">After (Target)</div>
+    <strong>94 / 100 &middot; A</strong>
+    <p style="margin: 6px 0 0; font-size:0.85rem; color:var(--text-muted)">
+      Enterprise-grade. Full test coverage, clean architecture, email + real-time notifications, file attachments, and production infrastructure.
+    </p>
+  </div>
+</div>
+
+<div class="meta-grid">
+  <div class="meta-card"><div class="value">14 &rarr; 16</div><div class="label">Models</div><div class="vs">+Attachment, +TimeEntry</div></div>
+  <div class="meta-card"><div class="value">7 &rarr; 12</div><div class="label">Controllers</div><div class="vs">+Services, +API, +Hubs</div></div>
+  <div class="meta-card"><div class="value">0 &rarr; 120+</div><div class="label">Tests</div><div class="vs">+Unit, +Integration, +E2E</div></div>
+  <div class="meta-card"><div class="value">~5k &rarr; ~8k</div><div class="label">Lines of Code</div><div class="vs">+Services, +Tests, +Real-time</div></div>
+</div>
+
+<h2>1 &mdash; Dimension Score: Before vs After</h2>
+
+<div class="rating-pair">
+  <span class="label">Architecture</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:90%;background:var(--green)"></div><div class="marker" style="left:90%"></div></div>
+    <div class="track"><div class="fill" style="width:95%;background:var(--blue)"></div><div class="marker" style="left:95%"></div></div>
+  </div>
+  <div class="scores"><span class="old">9</span> &rarr; <span class="new">9.5</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Code Quality</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:80%;background:var(--green)"></div><div class="marker" style="left:80%"></div></div>
+    <div class="track"><div class="fill" style="width:95%;background:var(--blue)"></div><div class="marker" style="left:95%"></div></div>
+  </div>
+  <div class="scores"><span class="old">8</span> &rarr; <span class="new">9.5</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Security</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:80%;background:var(--green)"></div><div class="marker" style="left:80%"></div></div>
+    <div class="track"><div class="fill" style="width:90%;background:var(--blue)"></div><div class="marker" style="left:90%"></div></div>
+  </div>
+  <div class="scores"><span class="old">8</span> &rarr; <span class="new">9</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Feature Completeness</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:85%;background:var(--green)"></div><div class="marker" style="left:85%"></div></div>
+    <div class="track"><div class="fill" style="width:95%;background:var(--blue)"></div><div class="marker" style="left:95%"></div></div>
+  </div>
+  <div class="scores"><span class="old">8.5</span> &rarr; <span class="new">9.5</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">UI / UX</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:90%;background:var(--green)"></div><div class="marker" style="left:90%"></div></div>
+    <div class="track"><div class="fill" style="width:92%;background:var(--blue)"></div><div class="marker" style="left:92%"></div></div>
+  </div>
+  <div class="scores"><span class="old">9</span> &rarr; <span class="new">9.2</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Testing</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:10%;background:var(--red)"></div><div class="marker" style="left:10%"></div></div>
+    <div class="track"><div class="fill" style="width:90%;background:var(--blue)"></div><div class="marker" style="left:90%"></div></div>
+  </div>
+  <div class="scores"><span class="old">1</span> &rarr; <span class="new">9</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Performance &amp; DX</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:80%;background:var(--green)"></div><div class="marker" style="left:80%"></div></div>
+    <div class="track"><div class="fill" style="width:90%;background:var(--blue)"></div><div class="marker" style="left:90%"></div></div>
+  </div>
+  <div class="scores"><span class="old">8</span> &rarr; <span class="new">9</span></div>
+</div>
+<div class="rating-pair">
+  <span class="label">Documentation</span>
+  <div class="tracks">
+    <div class="track"><div class="fill" style="width:50%;background:var(--yellow)"></div><div class="marker" style="left:50%"></div></div>
+    <div class="track"><div class="fill" style="width:85%;background:var(--blue)"></div><div class="marker" style="left:85%"></div></div>
+  </div>
+  <div class="scores"><span class="old">5</span> &rarr; <span class="new">8.5</span></div>
+</div>
+
+<h2>2 &mdash; Feature Completeness: Before vs After</h2>
+
+<table>
+  <tr><th>Feature</th><th>Before</th><th>After</th><th>Delta</th></tr>
+  <tr><td>Task CRUD</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td>Kanban board</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td>Teams &amp; roles</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td>Comments</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td>Activity log</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td>Notifications (in-app)</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>SignalR real-time push</td></tr>
+  <tr><td>Reports</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>Export to PDF/CSV</td></tr>
+  <tr><td>Dark mode</td><td><span class="badge badge-a">Done</span></td><td><span class="badge badge-a">Done</span></td><td>&mdash;</td></tr>
+  <tr><td><strong>Unit / integration tests</strong></td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-a">Done</span></td><td><strong>+120 tests</strong></td></tr>
+  <tr><td><strong>Service layer</strong></td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-a">Done</span></td><td>ITaskService, IReportService, etc.</td></tr>
+  <tr><td><strong>Email notifications</strong></td><td><span class="badge badge-c">Partial</span></td><td><span class="badge badge-a">Done</span></td><td>MailKit + background queue</td></tr>
+  <tr><td><strong>File attachments</strong></td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-b">Done</span></td><td>Upload on tasks &amp; comments</td></tr>
+  <tr><td><strong>Real-time (SignalR)</strong></td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-b">Done</span></td><td>Live push instead of polling</td></tr>
+  <tr><td><strong>Time tracking</strong></td><td><span class="badge badge-c">Partial</span></td><td><span class="badge badge-b">Done</span></td><td>Start/stop timer, daily log</td></tr>
+  <tr><td><strong>Full-text search</strong></td><td><span class="badge badge-c">Partial</span></td><td><span class="badge badge-b">Done</span></td><td>FTS5 or PostgreSQL tsvector</td></tr>
+  <tr><td><strong>Production infra</strong></td><td><span class="badge badge-c">Partial</span></td><td><span class="badge badge-b">Done</span></td><td>PostgreSQL, Docker, CI/CD, health checks</td></tr>
+  <tr><td>Recurring tasks</td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-c">Done</span></td><td></td></tr>
+  <tr><td>Task dependencies</td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-c">Done</span></td><td></td></tr>
+  <tr><td>Calendar / Gantt</td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-c">Done</span></td><td></td></tr>
+  <tr><td>Permissions UI</td><td><span class="badge badge-d">Missing</span></td><td><span class="badge badge-c">Done</span></td><td>Role management screen</td></tr>
+</table>
+
+<h2>3 &mdash; Enhancement Phases with Impact</h2>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 6</span>
+  <h3>Testing Infrastructure</h3>
+  <span class="badge badge-a" style="margin-bottom:8px;display:inline-block">Score Impact: +6</span>
+  <ul>
+    <li>xUnit test project with EF Core in-memory provider</li>
+    <li>Integration tests for TasksController (CRUD, scoping, auth policies)</li>
+    <li>Unit tests for AccountController (login rate-limiting flow)</li>
+    <li>E2E smoke tests with Playwright</li>
+  </ul>
+  <div class="impact impact-high"><strong>Impact:</strong> Testing goes from 1/10 to 9/10. Enables safe refactoring for all subsequent phases.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 7</span>
+  <h3>Service Layer Refactor</h3>
+  <span class="badge badge-a" style="margin-bottom:8px;display:inline-block">Score Impact: +2.5</span>
+  <ul>
+    <li>ITaskService / ICategoryService / IReportService interfaces</li>
+    <li>ICurrentUserService abstraction for UserId / OrgId / Role</li>
+    <li>Authorization filter replacing inline `isAssigned || IsManagerOrAbove`</li>
+    <li>Duplicate code consolidated, TasksController reduced ~50%</li>
+  </ul>
+  <div class="impact impact-high"><strong>Impact:</strong> Architecture 9 &rarr; 9.5, Code Quality 8 &rarr; 9.5. Future features become trivial to add.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 8</span>
+  <h3>Email Notifications</h3>
+  <span class="badge badge-b" style="margin-bottom:8px;display:inline-block">Score Impact: +0.5</span>
+  <ul>
+    <li>MailKit SMTP integration</li>
+    <li>IHostedService background queue for email dispatch</li>
+    <li>Triggers: assignment, comment, due date approaching (24h)</li>
+    <li>Notification preference page (unsubscribe per type)</li>
+  </ul>
+  <div class="impact impact-med"><strong>Impact:</strong> Feature completeness 8.5 &rarr; 9. Major user-facing value.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 9</span>
+  <h3>File Attachments</h3>
+  <span class="badge badge-b" style="margin-bottom:8px;display:inline-block">Score Impact: +0.5</span>
+  <ul>
+    <li>Attachment entity linked to TaskItem and TaskComment</li>
+    <li>Local file storage with type/size validation</li>
+    <li>Upload UI on task Create / Edit / Details</li>
+  </ul>
+  <div class="impact impact-med"><strong>Impact:</strong> Covers a common workflow gap. Enables rich task collaboration.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 10</span>
+  <h3>Real-Time Features (SignalR)</h3>
+  <span class="badge badge-b" style="margin-bottom:8px;display:inline-block">Score Impact: +1</span>
+  <ul>
+    <li>SignalR hub for live notification push</li>
+    <li>Replace 30s polling with WebSocket</li>
+    <li>Optional: live Kanban board collaboration</li>
+  </ul>
+  <div class="impact impact-med"><strong>Impact:</strong> UX 9 &rarr; 9.2. Notifications become instant. Sets stage for multi-user Kanban.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 11</span>
+  <h3>Production Readiness</h3>
+  <span class="badge badge-b" style="margin-bottom:8px;display:inline-block">Score Impact: +2</span>
+  <ul>
+    <li>Migrate to PostgreSQL</li>
+    <li>Serilog structured logging</li>
+    <li>Health checks endpoint</li>
+    <li>Dockerfile + docker-compose</li>
+    <li>GitHub Actions CI/CD</li>
+    <li>Security headers (HSTS, CSP)</li>
+  </ul>
+  <div class="impact impact-med"><strong>Impact:</strong> Performance 8 &rarr; 9, Security 8 &rarr; 9. Production-ready deployment pipeline.</div>
+</div>
+
+<div class="phase-card">
+  <span class="phase-number">Phase 12</span>
+  <h3>Advanced Features</h3>
+  <span class="badge badge-c" style="margin-bottom:8px;display:inline-block">Score Impact: +1</span>
+  <ul>
+    <li>Time tracking: start/stop timer, daily log</li>
+    <li>Full-text search (FTS5 / tsvector)</li>
+    <li>Recurring tasks</li>
+    <li>Task dependencies / blocking links</li>
+    <li>Calendar / Gantt view</li>
+    <li>Export to PDF / CSV / Excel</li>
+    <li>Role/permission management UI</li>
+  </ul>
+  <div class="impact impact-low"><strong>Impact:</strong> Feature completeness 9.5 &rarr; 10. Differentiator features for enterprise adoption.</div>
+</div>
+
+<h2>4 &mdash; Architecture Evolution</h2>
+
+<div class="comparison-row">
+  <div class="before">
+    <div class="label-tag">Current Architecture</div>
+    <pre style="font-size:0.8rem;margin:8px 0 0;white-space:pre-wrap;">
+Client (Browser)
+  &darr;
+Controllers (business logic)
+  &darr;
+EF Core DbContext
+  &darr;
+SQLite
+    </pre>
+    <p style="margin:6px 0 0;font-size:0.85rem;color:var(--text-muted)">
+      Business logic in controllers. No abstractions. No tests.
+    </p>
+  </div>
+  <div class="after">
+    <div class="label-tag">Target Architecture</div>
+    <pre style="font-size:0.8rem;margin:8px 0 0;white-space:pre-wrap;">
+Client (Browser)
+  &darr; SignalR (real-time)
+Controllers (thin) &lt;-&gt; Hubs
+  &darr;
+Service Layer (business logic)
+  &darr;
+EF Core DbContext + Repositories
+  &darr;
+PostgreSQL
+    </pre>
+    <p style="margin:6px 0 0;font-size:0.85rem;color:var(--text-muted)">
+      Clean onion architecture. Testable, maintainable, scalable.
+    </p>
+  </div>
+</div>
+
+<h2>5 &mdash; Effort Estimation</h2>
+
+<table>
+  <tr><th>Phase</th><th>Estimated Effort</th><th>Complexity</th><th>Dependencies</th></tr>
+  <tr><td>6 &mdash; Testing</td><td>3-5 days</td><td>Medium</td><td>None</td></tr>
+  <tr><td>7 &mdash; Service Layer</td><td>2-3 days</td><td>Medium</td><td>Phase 6 (safety net)</td></tr>
+  <tr><td>8 &mdash; Email</td><td>2-3 days</td><td>Medium</td><td>None</td></tr>
+  <tr><td>9 &mdash; Attachments</td><td>2 days</td><td>Low</td><td>None</td></tr>
+  <tr><td>10 &mdash; Real-Time</td><td>2 days</td><td>Medium</td><td>Phase 5 (notifications)</td></tr>
+  <tr><td>11 &mdash; Production</td><td>3-5 days</td><td>High</td><td>Phase 6-7 (stability)</td></tr>
+  <tr><td>12 &mdash; Advanced</td><td>5-8 days</td><td>High</td><td>Phase 7 (architecture)</td></tr>
+  <tr><td><strong>Total</strong></td><td><strong>~20-28 days</strong></td><td></td><td></td></tr>
+</table>
+
+<h2>6 &mdash; Risk Assessment</h2>
+
+<table>
+  <tr><th>Risk</th><th>Probability</th><th>Impact</th><th>Mitigation</th></tr>
+  <tr><td>SQLite concurrent write contention</td><td>High (at scale)</td><td>Medium</td><td>Phase 11 migrates to PostgreSQL</td></tr>
+  <tr><td>Refactoring introduces regressions</td><td>Medium</td><td>High</td><td>Phase 6 (tests) before Phase 7 (refactor)</td></tr>
+  <tr><td>Email deliverability / SPF/DKIM</td><td>Medium</td><td>Low</td><td>Use SendGrid / transactional email service</td></tr>
+  <tr><td>File storage fills disk</td><td>Low</td><td>Medium</td><td>Max file size, cloud storage option (S3)</td></tr>
+  <tr><td>SignalR connection scaling</td><td>Low</td><td>Low</td><td>Azure SignalR Service for multi-instance</td></tr>
+</table>
+
+<h2>7 &mdash; Gap Closure Summary</h2>
+
+<table>
+  <tr><th>Current Weakness</th><th>Target State</th><th>Closure Phase</th></tr>
+  <tr><td>No tests (score 1/10)</td><td>120+ tests covering controllers, services, auth</td><td>Phase 6</td></tr>
+  <tr><td>Business logic in controllers</td><td>Thin controllers, service layer</td><td>Phase 7</td></tr>
+  <tr><td>Duplicated ownership checks</td><td>Authorization filter + ICurrentUserService</td><td>Phase 7</td></tr>
+  <tr><td>No email notifications</td><td>MailKit with background queue</td><td>Phase 8</td></tr>
+  <tr><td>No file attachments</td><td>File upload on tasks and comments</td><td>Phase 9</td></tr>
+  <tr><td>30s polling for notifications</td><td>SignalR real-time push</td><td>Phase 10</td></tr>
+  <tr><td>SQLite (single-writer)</td><td>PostgreSQL</td><td>Phase 11</td></tr>
+  <tr><td>No Docker / CI/CD</td><td>Docker compose + GitHub Actions</td><td>Phase 11</td></tr>
+  <tr><td>No time tracking</td><td>Start/stop timer, daily log</td><td>Phase 12</td></tr>
+  <tr><td>Basic search (Contains)</td><td>Full-text search (FTS5 / tsvector)</td><td>Phase 12</td></tr>
+  <tr><td>No role management UI</td><td>Admin permission screen</td><td>Phase 12</td></tr>
+</table>
+
+<h2>8 &mdash; Recommended Order</h2>
+
+<ol class="rec-list">
+  <li><strong>Phase 6 (Tests)</strong> &mdash; Must come first. No refactoring without a safety net.</li>
+  <li><strong>Phase 7 (Service Layer)</strong> &mdash; Unlocks all subsequent phases by cleaning the architecture.</li>
+  <li><strong>Phase 8 (Email)</strong> &mdash; Highest user-facing value after the foundation is solid.</li>
+  <li><strong>Phase 10 (Real-Time)</strong> &mdash; Replace polling with SignalR (depends on Phase 5 notifications).</li>
+  <li><strong>Phase 9 (Attachments)</strong> &mdash; Straightforward; can be done in parallel with Phase 10.</li>
+  <li><strong>Phase 11 (Production)</strong> &mdash; Prerequisite for any live deployment.</li>
+  <li><strong>Phase 12 (Advanced Features)</strong> &mdash; Polish and differentiate after core is stable.</li>
+</ol>
+
+<hr style="margin: 40px 0; border: none; border-top: 2px solid var(--border);">
+
+<p style="text-align:center;color:var(--text-muted);font-size:0.85rem;">
+  Target state projection &middot; TaskFlow TMS &middot; 2026
+</p>
+
+</div>
+</body>
+</html>

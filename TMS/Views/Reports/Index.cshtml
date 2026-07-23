@@ -1,0 +1,208 @@
+@model TeamReportViewModel
+@{
+    ViewData["Title"] = "Team Reports";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-0"><i class="fas fa-chart-bar me-2"></i>@Model.TeamSummary.TeamName — Report</h5>
+        <small class="text-muted">Efficiency metrics for all team members</small>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">Team Members</div>
+                <div class="stat-value">@Model.TeamSummary.TotalMembers</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-tasks"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">Total Tasks</div>
+                <div class="stat-value">@Model.TeamSummary.TotalTasks</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value">@Model.TeamSummary.CompletedTasks</div>
+                <div class="stat-change up">@Model.TeamSummary.AvgCompletionRate% avg completion</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-content">
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value">@Model.TeamSummary.OverdueTasks</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Employees.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header"><i class="fas fa-chart-simple me-2"></i>Completion vs On-Time Rate</div>
+        <div class="card-body">
+            <div style="position: relative; height: 260px;">
+                <canvas id="reportChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fas fa-users me-2"></i>Per-Employee Efficiency</div>
+        <div class="card-body p-0">
+            <div class="table-container" style="box-shadow: none;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Total</th>
+                            <th>Done</th>
+                            <th>Completion</th>
+                            <th>On-Time</th>
+                            <th>Cycle (hrs)</th>
+                            <th>Overdue</th>
+                            <th>Workload</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var emp in Model.Employees)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="user-cell">
+                                        <img src="@emp.AvatarUrl" alt="" class="user-avatar-sm" />
+                                        <span class="fw-semibold">@emp.UserName</span>
+                                    </div>
+                                </td>
+                                <td>@emp.TotalTasks</td>
+                                <td>@emp.CompletedTasks</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress-thin flex-grow-1" style="width: 80px;">
+                                            <div class="progress-bar" style="width: @emp.CompletionRate%; background: var(--green);"></div>
+                                        </div>
+                                        <small class="fw-semibold">@emp.CompletionRate%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold @(emp.OnTimeRate >= 80 ? "text-success" : emp.OnTimeRate >= 50 ? "text-warning" : "text-danger")">
+                                        @emp.OnTimeRate%
+                                    </span>
+                                </td>
+                                <td>@(emp.AvgCycleHours > 0 ? $"{emp.AvgCycleHours:F1}h" : "—")</td>
+                                <td>
+                                    @if (emp.OverdueCount > 0)
+                                    {
+                                        <span class="text-danger fw-semibold">@emp.OverdueCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">0</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        @if (emp.UrgentCount > 0) { <span class="priority-badge priority-urgent" style="font-size: 10px; padding: 1px 6px;">@emp.UrgentCount U</span> }
+                                        @if (emp.HighCount > 0) { <span class="priority-badge priority-high" style="font-size: 10px; padding: 1px 6px;">@emp.HighCount H</span> }
+                                        @if (emp.MediumCount > 0) { <span class="priority-badge priority-medium" style="font-size: 10px; padding: 1px 6px;">@emp.MediumCount M</span> }
+                                        @if (emp.LowCount > 0) { <span class="priority-badge priority-low" style="font-size: 10px; padding: 1px 6px;">@emp.LowCount L</span> }
+                                    </div>
+                                </td>
+                                <td>
+                                    <a asp-action="EmployeeDetail" asp-route-id="@emp.UserId" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="empty-state">
+                <i class="fas fa-chart-bar"></i>
+                <h5>No team data yet</h5>
+                <p>Add team members and tasks to see efficiency reports.</p>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var canvas = document.getElementById('reportChart');
+            if (!canvas) return;
+
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            var textColor = isDark ? '#FFFFFF' : '#171724';
+            var gridColor = isDark ? '#2B2B38' : '#E7E7F1';
+
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: @Html.Raw(JsonSerializer.Serialize(Model.ChartLabels)),
+                    datasets: [
+                        {
+                            label: 'Completion Rate %',
+                            data: @Html.Raw(JsonSerializer.Serialize(Model.ChartCompletionRates)),
+                            backgroundColor: '#17B26A',
+                            borderRadius: 6,
+                            borderSkipped: false
+                        },
+                        {
+                            label: 'On-Time Rate %',
+                            data: @Html.Raw(JsonSerializer.Serialize(Model.ChartOnTimeRates)),
+                            backgroundColor: '#4C6FFF',
+                            borderRadius: 6,
+                            borderSkipped: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: textColor, usePointStyle: true, font: { size: 12 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gridColor },
+                            ticks: { color: textColor, font: { size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: gridColor },
+                            ticks: { color: textColor, font: { size: 11 }, callback: function (v) { return v + '%'; } }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}

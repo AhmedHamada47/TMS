@@ -7,30 +7,30 @@ using TMS.ViewModels;
 namespace TMS.Controllers;
 
 [Authorize]
-public class HomeController : Controller
+public class HomeController : BaseController
 {
-    private readonly AppDbContext _context;
-
-    public HomeController(AppDbContext context)
-    {
-        _context = context;
-    }
+    public HomeController(AppDbContext context) : base(context) { }
 
     public async Task<IActionResult> Index()
     {
+        var uid = CurrentUserId;
+        var orgId = CurrentOrganizationId;
         var now = DateTime.UtcNow;
 
-        var totalTasksTask = _context.Tasks.CountAsync();
-        var toDoTask = _context.Tasks.CountAsync(t => t.Status == Models.TaskItemStatus.ToDo);
-        var inProgressTask = _context.Tasks.CountAsync(t => t.Status == Models.TaskItemStatus.InProgress);
-        var doneTask = _context.Tasks.CountAsync(t => t.Status == Models.TaskItemStatus.Done);
-        var urgentTask = _context.Tasks.CountAsync(t => t.Priority == Models.TaskPriority.Urgent && t.Status != Models.TaskItemStatus.Done);
-        var overdueTask = _context.Tasks.CountAsync(t => t.DueDate < now && t.Status != Models.TaskItemStatus.Done);
-        var usersTask = _context.Users.CountAsync();
-        var categoriesTask = _context.Categories.CountAsync();
-        var recentTask = _context.Tasks.Include(t => t.Category).Include(t => t.User).OrderByDescending(t => t.CreatedAt).Take(5).ToListAsync();
-        var upcomingTask = _context.Tasks.Where(t => t.DueDate >= now && t.Status != Models.TaskItemStatus.Done).OrderBy(t => t.DueDate).Take(5).ToListAsync();
-        var categorySummariesTask = _context.Categories.Select(c => new CategorySummary
+        var orgQuery = Context.Tasks.Where(t => t.OrganizationId == orgId);
+        var userQuery = orgQuery.Where(t => t.UserId == uid);
+
+        var totalTasksTask = userQuery.CountAsync();
+        var toDoTask = userQuery.CountAsync(t => t.Status == Models.TaskItemStatus.ToDo);
+        var inProgressTask = userQuery.CountAsync(t => t.Status == Models.TaskItemStatus.InProgress);
+        var doneTask = userQuery.CountAsync(t => t.Status == Models.TaskItemStatus.Done);
+        var urgentTask = userQuery.CountAsync(t => t.Priority == Models.TaskPriority.Urgent && t.Status != Models.TaskItemStatus.Done);
+        var overdueTask = userQuery.CountAsync(t => t.DueDate < now && t.Status != Models.TaskItemStatus.Done);
+        var usersTask = Context.OrganizationMemberships.CountAsync(m => m.OrganizationId == orgId);
+        var categoriesTask = Context.Categories.Where(c => c.OrganizationId == orgId).CountAsync();
+        var recentTask = userQuery.Include(t => t.Category).Include(t => t.User).Include(t => t.Assignees).ThenInclude(a => a.User).OrderByDescending(t => t.CreatedAt).Take(5).ToListAsync();
+        var upcomingTask = userQuery.Where(t => t.DueDate >= now && t.Status != Models.TaskItemStatus.Done).Include(t => t.Assignees).ThenInclude(a => a.User).OrderBy(t => t.DueDate).Take(5).ToListAsync();
+        var categorySummariesTask = Context.Categories.Where(c => c.OrganizationId == orgId).Select(c => new CategorySummary
         {
             CategoryName = c.Name,
             Color = c.Color,

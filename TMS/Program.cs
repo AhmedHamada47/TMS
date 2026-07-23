@@ -11,7 +11,20 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LogoutPath = "/Account/Logout";
     });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireClaim("OrganizationRole", "Admin"));
+    options.AddPolicy("ManagerOrAbove", policy => policy.RequireClaim("OrganizationRole", "Manager", "Admin"));
+    options.AddPolicy("TeamLeadOrAbove", policy => policy.RequireClaim("OrganizationRole", "TeamLead", "Manager", "Admin"));
+});
+
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -31,6 +44,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+else
+{
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();

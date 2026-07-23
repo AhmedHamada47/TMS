@@ -5,6 +5,8 @@ public class SidebarViewModel
     public string UserName { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
+    public string OrganizationName { get; set; } = string.Empty;
+    public string OrganizationRole { get; set; } = string.Empty;
     public List<SidebarCategory> Categories { get; set; } = new();
     public string CurrentController { get; set; } = string.Empty;
     public string CurrentAction { get; set; } = string.Empty;

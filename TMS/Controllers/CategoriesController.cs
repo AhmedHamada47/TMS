@@ -1,29 +1,21 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TMS.Data;
 using TMS.Models;
 
 namespace TMS.Controllers;
 
 [Authorize]
-public class CategoriesController : Controller
+public class CategoriesController : BaseController
 {
-    private readonly AppDbContext _context;
-
-    public CategoriesController(AppDbContext context)
-    {
-        _context = context;
-    }
-
-    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    public CategoriesController(AppDbContext context) : base(context) { }
 
     public async Task<IActionResult> Index()
     {
-        var categories = await _context.Categories
+        var categories = await Context.Categories
             .Include(c => c.Tasks)
-            .Where(c => c.UserId == CurrentUserId)
+            .Where(c => c.OrganizationId == CurrentOrganizationId)
             .OrderBy(c => c.Name)
             .ToListAsync();
         return View(categories);
@@ -41,9 +33,10 @@ public class CategoriesController : Controller
         if (ModelState.IsValid)
         {
             category.UserId = CurrentUserId;
+            category.OrganizationId = CurrentOrganizationId;
             category.CreatedAt = DateTime.UtcNow;
-            _context.Add(category);
-            await _context.SaveChangesAsync();
+            Context.Add(category);
+            await Context.SaveChangesAsync();
             TempData["Success"] = "Category created successfully!";
             return RedirectToAction(nameof(Index));
         }
@@ -54,7 +47,7 @@ public class CategoriesController : Controller
     {
         if (id == null) return NotFound();
 
-        var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
+        var category = await Context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == CurrentOrganizationId);
         if (category == null) return NotFound();
 
         return View(category);
@@ -66,7 +59,7 @@ public class CategoriesController : Controller
     {
         if (id != category.Id) return NotFound();
 
-        var existing = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
+        var existing = await Context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == CurrentOrganizationId);
         if (existing == null) return NotFound();
 
         if (ModelState.IsValid)
@@ -75,7 +68,7 @@ public class CategoriesController : Controller
             existing.Description = category.Description;
             existing.Color = category.Color;
 
-            await _context.SaveChangesAsync();
+            await Context.SaveChangesAsync();
             TempData["Success"] = "Category updated successfully!";
             return RedirectToAction(nameof(Index));
         }
@@ -86,11 +79,11 @@ public class CategoriesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
+        var category = await Context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.OrganizationId == CurrentOrganizationId);
         if (category != null)
         {
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
+            Context.Categories.Remove(category);
+            await Context.SaveChangesAsync();
             TempData["Success"] = "Category deleted successfully!";
         }
 

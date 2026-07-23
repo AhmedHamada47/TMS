@@ -34,6 +34,17 @@
                         <input type="text" name="search" placeholder="Search tasks..." id="searchInput" value="@ViewBag.Search" />
                     </form>
                     <div class="topbar-actions">
+                        <div class="dropdown" id="notificationDropdown">
+                            <button class="btn btn-outline-secondary btn-sm position-relative" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                                <i class="fas fa-bell"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="font-size: 0.55rem; display: none;">0</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end shadow" style="width: 340px; max-height: 400px; overflow-y: auto;" id="notifMenu">
+                                <div class="text-center py-3 text-muted">
+                                    <small>Loading...</small>
+                                </div>
+                            </div>
+                        </div>
                         <button id="darkModeToggle" class="btn btn-outline-secondary btn-sm" title="Toggle Dark Mode">
                             <i class="fas fa-moon"></i>
                         </button>
@@ -69,6 +80,58 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            async function updateNotifications() {
+                try {
+                    const res = await fetch('/Notifications/GetUnreadCount');
+                    const data = await res.json();
+                    const badge = document.getElementById('notifBadge');
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = '';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } catch {}
+            }
+
+            async function loadNotifications() {
+                const menu = document.getElementById('notifMenu');
+                try {
+                    const res = await fetch('/Notifications/GetRecent');
+                    const items = await res.json();
+                    if (items.length === 0) {
+                        menu.innerHTML = '<div class="text-center py-3 text-muted"><small>No notifications</small></div>';
+                    } else {
+                        menu.innerHTML = items.map(n => `
+                            <a href="${n.link || '#'}" class="dropdown-item d-flex align-items-start gap-2 ${!n.isRead ? 'fw-bold' : ''}">
+                                <i class="fas fa-circle ${n.isRead ? 'text-muted' : 'text-primary'}" style="font-size: 0.5rem; margin-top: 6px;"></i>
+                                <div>
+                                    <div>${n.message}</div>
+                                    <small class="text-muted">${n.createdAt}</small>
+                                </div>
+                            </a>
+                        `).join('');
+                        menu.innerHTML += '<div class="dropdown-divider"></div>';
+                        menu.innerHTML += '<a href="/Notifications" class="dropdown-item text-center small">View All</a>';
+                    }
+                } catch {
+                    menu.innerHTML = '<div class="text-center py-3 text-muted"><small>Failed to load</small></div>';
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                updateNotifications();
+                setInterval(updateNotifications, 30000);
+
+                const bell = document.getElementById('notificationBell');
+                if (bell) {
+                    bell.addEventListener('click', loadNotifications);
+                }
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

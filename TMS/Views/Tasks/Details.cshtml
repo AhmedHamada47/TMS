@@ -64,12 +64,15 @@
                 <div class="detail-item">
                     <div class="detail-label">Assignee</div>
                     <div class="detail-value">
-                        @if (Model.User != null)
+                        @{
+                            var detailAssignee = Model.Assignees?.FirstOrDefault(a => a.IsPrimary)?.User ?? Model.User;
+                        }
+                        @if (detailAssignee != null)
                         {
                             <div class="user-cell">
-                                <img src="@Model.User.AvatarUrl" alt="" class="user-avatar-sm" />
-                                <span>@Model.User.Name</span>
-                                <small class="text-muted">(@Model.User.Email)</small>
+                                <img src="@detailAssignee.AvatarUrl" alt="" class="user-avatar-sm" />
+                                <span>@detailAssignee.Name</span>
+                                <small class="text-muted">(@detailAssignee.Email)</small>
                             </div>
                         }
                         else
@@ -118,3 +121,120 @@
         </div>
     </div>
 </div>
+
+<hr class="my-4" />
+
+<div class="row">
+    <div class="col-md-7">
+        <h5><i class="fas fa-comments me-2"></i>Comments</h5>
+
+        <form asp-action="AddComment" method="post" class="mb-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="taskId" value="@Model.Id" />
+            <div class="input-group">
+                <textarea name="content" class="form-control" rows="2" placeholder="Write a comment..." required></textarea>
+                <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </form>
+
+        @{
+            var topLevelComments = Model.Comments?.Where(c => c.ParentCommentId == null).OrderByDescending(c => c.CreatedAt).ToList() ?? new();
+        }
+
+        @if (topLevelComments.Count == 0)
+        {
+            <p class="text-muted">No comments yet.</p>
+        }
+
+        @foreach (var comment in topLevelComments)
+        {
+            <div class="comment-box mb-3">
+                <div class="d-flex gap-2">
+                    <img src="@comment.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                    <div class="flex-grow-1">
+                        <strong>@comment.User.Name</strong>
+                        <small class="text-muted ms-2">@comment.CreatedAt.ToString("g")</small>
+                        <p class="mb-1 mt-1">@comment.Content</p>
+                        <button class="btn btn-sm btn-link text-muted p-0 reply-toggle" data-comment-id="@comment.Id">
+                            <i class="fas fa-reply"></i> Reply
+                        </button>
+
+                        <form asp-action="AddComment" method="post" class="reply-form mt-2 d-none">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="taskId" value="@Model.Id" />
+                            <input type="hidden" name="parentCommentId" value="@comment.Id" />
+                            <div class="input-group input-group-sm">
+                                <input name="content" class="form-control" placeholder="Write a reply..." required />
+                                <button class="btn btn-sm btn-primary" type="submit"><i class="fas fa-reply"></i></button>
+                            </div>
+                        </form>
+
+                        @if (comment.Replies?.Count > 0)
+                        {
+                            <div class="mt-2 ps-4 border-start">
+                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
+                                {
+                                    <div class="d-flex gap-2 mb-2">
+                                        <img src="@reply.User.AvatarUrl" alt="" class="user-avatar-sm" />
+                                        <div>
+                                            <strong>@reply.User.Name</strong>
+                                            <small class="text-muted ms-2">@reply.CreatedAt.ToString("g")</small>
+                                            <p class="mb-0">@reply.Content</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-5">
+        <h5><i class="fas fa-history me-2"></i>Activity Log</h5>
+        @{
+            var logs = Model.ActivityLogs?.OrderByDescending(al => al.CreatedAt).ToList() ?? new();
+        }
+        @if (logs.Count == 0)
+        {
+            <p class="text-muted">No activity recorded yet.</p>
+        }
+        <div class="activity-timeline">
+            @foreach (var log in logs)
+            {
+                <div class="activity-item">
+                    <div class="activity-dot"></div>
+                    <div>
+                        <strong>@log.User.Name</strong>
+                        @if (log.FieldName == "Comment")
+                        {
+                            <span>@log.NewValue</span>
+                        }
+                        else if (log.FieldName == "Task")
+                        {
+                            <span>@log.NewValue</span>
+                        }
+                        else
+                        {
+                            <span>changed @log.FieldName from "@log.OldValue" to "@log.NewValue"</span>
+                        }
+                        <div class="text-muted" style="font-size: 0.8rem;">@log.CreatedAt.ToString("g")</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.reply-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const form = btn.parentElement.querySelector('.reply-form');
+                form.classList.toggle('d-none');
+                form.querySelector('input[name="content"]').focus();
+            });
+        });
+    </script>
+}

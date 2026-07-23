@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TMS.Data;
 
@@ -10,9 +11,11 @@ using TMS.Data;
 namespace TMS.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723164311_AddEstimatedAndActualHours")]
+    partial class AddEstimatedAndActualHours
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -204,41 +207,6 @@ namespace TMS.Migrations
                         });
                 });
 
-            modelBuilder.Entity("TMS.Models.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Link")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("IsRead");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Notifications", (string)null);
-                });
-
             modelBuilder.Entity("TMS.Models.Organization", b =>
                 {
                     b.Property<int>("Id")
@@ -358,43 +326,6 @@ namespace TMS.Migrations
                         });
                 });
 
-            modelBuilder.Entity("TMS.Models.TaskActivityLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FieldName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NewValue")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("OldValue")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TaskItemId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("TaskItemId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TaskActivityLogs", (string)null);
-                });
-
             modelBuilder.Entity("TMS.Models.TaskAssignee", b =>
                 {
                     b.Property<int>("Id")
@@ -476,40 +407,6 @@ namespace TMS.Migrations
                             TaskItemId = 8,
                             UserId = 3
                         });
-                });
-
-            modelBuilder.Entity("TMS.Models.TaskComment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("ParentCommentId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TaskItemId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentCommentId");
-
-                    b.HasIndex("TaskItemId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TaskComments", (string)null);
                 });
 
             modelBuilder.Entity("TMS.Models.TaskItem", b =>
@@ -912,17 +809,6 @@ namespace TMS.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TMS.Models.Notification", b =>
-                {
-                    b.HasOne("TMS.Models.User", "User")
-                        .WithMany("Notifications")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TMS.Models.OrganizationMembership", b =>
                 {
                     b.HasOne("TMS.Models.Organization", "Organization")
@@ -953,25 +839,6 @@ namespace TMS.Migrations
                     b.Navigation("Organization");
                 });
 
-            modelBuilder.Entity("TMS.Models.TaskActivityLog", b =>
-                {
-                    b.HasOne("TMS.Models.TaskItem", "TaskItem")
-                        .WithMany("ActivityLogs")
-                        .HasForeignKey("TaskItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TMS.Models.User", "User")
-                        .WithMany("ActivityLogs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("TaskItem");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TMS.Models.TaskAssignee", b =>
                 {
                     b.HasOne("TMS.Models.TaskItem", "TaskItem")
@@ -985,32 +852,6 @@ namespace TMS.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("TaskItem");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TMS.Models.TaskComment", b =>
-                {
-                    b.HasOne("TMS.Models.TaskComment", "ParentComment")
-                        .WithMany("Replies")
-                        .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("TMS.Models.TaskItem", "TaskItem")
-                        .WithMany("Comments")
-                        .HasForeignKey("TaskItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TMS.Models.User", "User")
-                        .WithMany("TaskComments")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ParentComment");
 
                     b.Navigation("TaskItem");
 
@@ -1112,18 +953,9 @@ namespace TMS.Migrations
                     b.Navigation("Boards");
                 });
 
-            modelBuilder.Entity("TMS.Models.TaskComment", b =>
-                {
-                    b.Navigation("Replies");
-                });
-
             modelBuilder.Entity("TMS.Models.TaskItem", b =>
                 {
-                    b.Navigation("ActivityLogs");
-
                     b.Navigation("Assignees");
-
-                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("TMS.Models.Team", b =>
@@ -1133,15 +965,9 @@ namespace TMS.Migrations
 
             modelBuilder.Entity("TMS.Models.User", b =>
                 {
-                    b.Navigation("ActivityLogs");
-
-                    b.Navigation("Notifications");
-
                     b.Navigation("OrganizationMemberships");
 
                     b.Navigation("TaskAssignments");
-
-                    b.Navigation("TaskComments");
 
                     b.Navigation("Tasks");
 

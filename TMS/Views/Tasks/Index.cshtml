@@ -30,6 +30,7 @@
         </div>
         <div class="d-flex gap-2 align-items-end">
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <a asp-action="Board" class="btn btn-sm btn-outline-info"><i class="fas fa-columns me-1"></i>Board</a>
             <a asp-action="Create" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> New Task</a>
         </div>
     </form>
@@ -43,10 +44,11 @@
     <table class="table" id="taskTable">
         <thead>
             <tr>
-                <th style="width: 35%;">Task</th>
+                <th style="width: 30%;">Task</th>
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Category</th>
+                <th>Assignee</th>
                 <th>Due Date</th>
                 <th style="width: 100px;">Actions</th>
             </tr>
@@ -55,7 +57,7 @@
             @if (!Model.Any())
             {
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <i class="fas fa-list-check"></i>
                             <h5>No tasks found</h5>
@@ -99,6 +101,22 @@
                         else
                         {
                             <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        @{
+                            var primaryAssignee = task.Assignees?.FirstOrDefault(a => a.IsPrimary)?.User;
+                        }
+                        @if (primaryAssignee != null)
+                        {
+                            <div class="user-cell">
+                                <img src="@primaryAssignee.AvatarUrl" alt="" class="user-avatar-sm" />
+                                <span>@primaryAssignee.Name</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Unassigned</span>
                         }
                     </td>
                     <td class="text-nowrap">

@@ -42,6 +42,19 @@
                         }
                     </select>
                 </div>
+                @if (Model.TeamMembers.Any())
+                {
+                    <div class="col-md-6">
+                        <label asp-for="AssigneeId" class="form-label">Assign To</label>
+                        <select asp-for="AssigneeId" class="form-select">
+                            <option value="">Myself</option>
+                            @foreach (var member in Model.TeamMembers)
+                            {
+                                <option value="@member.Id">@member.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
                 <div class="col-12 d-flex gap-2 justify-content-end">
                     <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">

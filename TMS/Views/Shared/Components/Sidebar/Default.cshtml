@@ -6,6 +6,13 @@
             <i class="fas fa-tasks"></i>
             <span>TaskFlow</span>
         </a>
+        <div class="sidebar-org small text-muted px-3 pb-2">
+            <i class="fas fa-building me-1"></i>@Model.OrganizationName
+            @if (!string.IsNullOrEmpty(Model.OrganizationRole))
+            {
+                <span class="badge bg-secondary ms-1">@Model.OrganizationRole</span>
+            }
+        </div>
     </div>
     <nav class="sidebar-nav">
         <ul class="nav-list">
@@ -16,10 +23,16 @@
                 </a>
             </li>
             <li class="nav-section">Management</li>
-            <li class="nav-item @(Model.CurrentController == "Tasks" ? "active" : "")">
+            <li class="nav-item @(Model.CurrentController == "Tasks" && Model.CurrentAction == "Index" ? "active" : "")">
                 <a asp-controller="Tasks" asp-action="Index" class="nav-link">
                     <i class="fas fa-list-check"></i>
                     <span>All Tasks</span>
+                </a>
+            </li>
+            <li class="nav-item @(Model.CurrentController == "Tasks" && Model.CurrentAction == "Board" ? "active" : "")">
+                <a asp-controller="Tasks" asp-action="Board" class="nav-link">
+                    <i class="fas fa-columns"></i>
+                    <span>Board</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -43,6 +56,13 @@
                 <a asp-controller="Categories" asp-action="Index" class="nav-link">
                     <i class="fas fa-gear"></i>
                     <span>Manage Categories</span>
+                </a>
+            </li>
+            <li class="nav-section">Reports</li>
+            <li class="nav-item @(Model.CurrentController == "Reports" ? "active" : "")">
+                <a asp-controller="Reports" asp-action="Index" class="nav-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Team Reports</span>
                 </a>
             </li>
             <li class="nav-section">Account</li>
