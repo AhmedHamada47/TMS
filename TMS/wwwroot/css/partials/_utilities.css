@@ -1,0 +1,52 @@
+.comment-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.reply-form .input-group {
+  max-width: 400px;
+}
+
+.activity-timeline {
+  position: relative;
+  padding-left: 20px;
+}
+
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--border);
+}
+
+.activity-item {
+  position: relative;
+  margin-bottom: 16px;
+  padding-left: 16px;
+}
+
+.activity-dot {
+  position: absolute;
+  left: -17px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--surface);
+}
+
+#notifMenu a.dropdown-item {
+  white-space: normal;
+  font-size: 0.875rem;
+  padding: 10px 14px;
+}
+
+#notifMenu a.dropdown-item:hover {
+  background: var(--surface-alt);
+}

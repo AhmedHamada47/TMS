@@ -1,74 +1,78 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using TMS.Data;
 using TMS.Models;
+using TMS.Services;
 
 namespace TMS.Controllers;
 
 [Authorize]
 public class NotificationsController : Controller
 {
-    private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public NotificationsController(AppDbContext context)
+    public NotificationsController(INotificationService notificationService)
     {
-        _context = context;
+        _notificationService = notificationService;
     }
 
     private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    /// <summary>
+    /// Displays the list of notifications for the current user.
+    /// </summary>
+    /// <returns>A view with the list of notifications.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Index()
     {
-        var notifications = await _context.Notifications
-            .Where(n => n.UserId == CurrentUserId)
-            .OrderByDescending(n => n.CreatedAt)
-            .ToListAsync();
-
+        List<Notification> notifications = await _notificationService.GetNotificationsAsync(CurrentUserId);
         return View(notifications);
     }
 
+    /// <summary>
+    /// Marks a single notification as read.
+    /// </summary>
+    /// <param name="id">The ID of the notification to mark as read.</param>
+    /// <returns>HTTP 200 OK on success.</returns>
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> MarkAsRead(int id)
     {
-        var notification = await _context.Notifications
-            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == CurrentUserId);
-
-        if (notification == null) return NotFound();
-
-        notification.IsRead = true;
-        await _context.SaveChangesAsync();
-
+        await _notificationService.MarkAsReadAsync(id, CurrentUserId);
         return Ok();
     }
 
+    /// <summary>
+    /// Marks all unread notifications as read for the current user.
+    /// </summary>
+    /// <returns>HTTP 200 OK on success.</returns>
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> MarkAllAsRead()
     {
-        await _context.Notifications
-            .Where(n => n.UserId == CurrentUserId && !n.IsRead)
-            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
-
+        await _notificationService.MarkAllAsReadAsync(CurrentUserId);
         return Ok();
     }
 
+    /// <summary>
+    /// Returns the count of unread notifications for the current user as JSON.
+    /// </summary>
+    /// <returns>A JSON object containing the unread count.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUnreadCount()
     {
-        var count = await _context.Notifications
-            .CountAsync(n => n.UserId == CurrentUserId && !n.IsRead);
-
+        int count = await _notificationService.GetUnreadCountAsync(CurrentUserId);
         return Json(new { count });
     }
 
+    /// <summary>
+    /// Returns the most recent notifications for the current user as JSON.
+    /// </summary>
+    /// <returns>A JSON array of recent notifications with id, message, link, isRead, and createdAt fields.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRecent()
     {
-        var notifications = await _context.Notifications
-            .Where(n => n.UserId == CurrentUserId)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(10)
-            .ToListAsync();
-
+        List<Notification> notifications = await _notificationService.GetRecentAsync(CurrentUserId);
         return Json(notifications.Select(n => new
         {
             n.Id,

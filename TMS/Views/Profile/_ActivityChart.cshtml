@@ -39,7 +39,9 @@
         @if (hasData)
         {
             <div style="position: relative; height: 200px;">
-                <canvas id="activityChart"></canvas>
+                <canvas id="activityChart"
+                    data-labels='@Html.Raw(JsonSerializer.Serialize(Model.DailyData.Select(d => d.Date)))'
+                    data-values='@Html.Raw(JsonSerializer.Serialize(Model.DailyData.Select(d => d.Count)))'></canvas>
             </div>
         }
         else
@@ -57,10 +59,17 @@
 {
     <script>
         (function () {
+            function readJson(el, key) {
+                try { return JSON.parse(el.getAttribute(key)); } catch { return null; }
+            }
+
             function initChart() {
                 var canvas = document.getElementById('activityChart');
                 if (!canvas) return;
                 if (typeof Chart === 'undefined') { setTimeout(initChart, 100); return; }
+
+                var labels = readJson(canvas, 'data-labels') || [];
+                var values = readJson(canvas, 'data-values') || [];
 
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 var ctx = canvas.getContext('2d');
@@ -71,9 +80,9 @@
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: @Html.Raw(ViewBag.ChartLabelsJson),
+                        labels: labels,
                         datasets: [{
-                            data: @Html.Raw(ViewBag.ChartDataJson),
+                            data: values,
                             borderColor: '#6C5CE7',
                             backgroundColor: areaGradient,
                             borderWidth: 2.5,

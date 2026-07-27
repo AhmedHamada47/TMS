@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TMS.Data;
+using TMS.Helpers;
 using TMS.Models;
+using TMS.Services;
 using TMS.ViewModels;
 
 namespace TMS.Controllers;
@@ -12,462 +14,240 @@ namespace TMS.Controllers;
 [Authorize]
 public class TasksController : BaseController
 {
-    public TasksController(AppDbContext context) : base(context) { }
+    private readonly ITaskService _taskService;
+    private readonly ITeamService _teamService;
 
+    public TasksController(AppDbContext context, ITaskService taskService, ITeamService teamService) : base(context)
+    {
+        _taskService = taskService;
+        _teamService = teamService;
+    }
+
+    /// <summary>
+    /// Displays the kanban board view of tasks grouped by status.
+    /// </summary>
+    /// <returns>The board view with a BoardViewModel.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Board()
     {
-        var orgId = CurrentOrganizationId;
-
-        var columns = await Context.BoardColumns
-            .Where(bc => bc.Board.Project.OrganizationId == orgId)
-            .Include(bc => bc.Tasks.Where(t => IsManagerOrAbove || t.Assignees.Any(a => a.UserId == CurrentUserId)))
-                .ThenInclude(t => t.Assignees).ThenInclude(a => a.User)
-            .Include(bc => bc.Tasks).ThenInclude(t => t.Category)
-            .OrderBy(bc => bc.Order)
-            .ToListAsync();
-
-        var board = await Context.Boards
-            .Include(b => b.Project)
-            .FirstOrDefaultAsync(b => b.Project.OrganizationId == orgId);
-
-        var vm = new BoardViewModel
-        {
-            BoardName = board?.Name ?? "Board",
-            ProjectName = board?.Project?.Name ?? "",
-            Columns = columns.Select(c => new BoardColumnViewModel
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Tasks = c.Tasks.OrderBy(t => t.BoardOrder).ToList()
-            }).ToList()
-        };
-
+        BoardViewModel vm = await _taskService.GetBoardAsync(CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         return View(vm);
     }
 
+    /// <summary>
+    /// Updates the board position (column and order) of a task via drag-and-drop.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to move.</param>
+    /// <param name="columnId">The target column (status) ID.</param>
+    /// <param name="order">The new display order within the column.</param>
+    /// <returns>HTTP 200 OK on success.</returns>
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateBoardPosition(int taskId, int columnId, int order)
     {
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == taskId && t.OrganizationId == CurrentOrganizationId);
-
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return Forbid();
-
-        var column = await Context.BoardColumns
-            .FirstOrDefaultAsync(bc => bc.Id == columnId && bc.Board.Project.OrganizationId == CurrentOrganizationId);
-
-        if (column == null) return NotFound();
-
-        task.BoardColumnId = columnId;
-        task.BoardOrder = order;
-        task.UpdatedAt = DateTime.UtcNow;
-
-        await Context.SaveChangesAsync();
-
+        await _taskService.UpdateBoardPositionAsync(taskId, columnId, order, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         return Ok();
     }
 
-    private IQueryable<TaskItem> OrgScopedTasks() =>
-        Context.Tasks.Where(t => t.OrganizationId == CurrentOrganizationId);
-
-    private async Task<List<User>> GetTeamMembersAsync()
-    {
-        var teamMemberIds = await Context.TeamMemberships
-            .Where(tm => tm.Team.OrganizationId == CurrentOrganizationId && tm.UserId == CurrentUserId)
-            .Select(tm => tm.TeamId)
-            .FirstOrDefaultAsync();
-
-        if (teamMemberIds == 0)
-            return new List<User>();
-
-        return await Context.TeamMemberships
-            .Where(tm => tm.TeamId == teamMemberIds)
-            .Select(tm => tm.User)
-            .AsNoTracking()
-            .ToListAsync();
-    }
-
+    /// <summary>
+    /// Displays the paginated, filterable list of tasks with search, status, category, and sort options.
+    /// </summary>
+    /// <param name="search">Optional search keyword for task titles.</param>
+    /// <param name="status">Optional task status filter.</param>
+    /// <param name="categoryId">Optional category filter.</param>
+    /// <param name="sort">Optional sort field.</param>
+    /// <param name="page">The current page number (default 1).</param>
+    /// <param name="pageSize">The number of tasks per page (default 10).</param>
+    /// <returns>A view with the filtered list of tasks and pagination data in ViewBag.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Index(string? search, TaskItemStatus? status, int? categoryId, string? sort, int page = 1, int pageSize = 10)
     {
-        IQueryable<TaskItem> query;
-
-        if (IsManagerOrAbove)
-        {
-            query = Context.Tasks
-                .Include(t => t.Category)
-                .Include(t => t.Assignees).ThenInclude(a => a.User)
-                .Where(t => t.OrganizationId == CurrentOrganizationId);
-        }
-        else
-        {
-            query = Context.Tasks
-                .Include(t => t.Category)
-                .Include(t => t.Assignees).ThenInclude(a => a.User)
-                .Where(t => t.OrganizationId == CurrentOrganizationId && t.Assignees.Any(a => a.UserId == CurrentUserId));
-        }
-
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(t => t.Title.Contains(search) || (t.Description != null && t.Description.Contains(search)));
-
-        if (status.HasValue)
-            query = query.Where(t => t.Status == status.Value);
-
-        if (categoryId.HasValue)
-            query = query.Where(t => t.CategoryId == categoryId.Value);
-
-        var total = await query.CountAsync();
-
-        query = sort switch
-        {
-            "dueDate" => query.OrderBy(t => t.DueDate),
-            "dueDateDesc" => query.OrderByDescending(t => t.DueDate),
-            "priority" => query.OrderByDescending(t => t.Priority),
-            "created" => query.OrderByDescending(t => t.CreatedAt),
-            _ => query.OrderByDescending(t => t.CreatedAt)
-        };
-
-        var tasks = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        PaginatedList<TaskItem> result = await _taskService.GetFilteredTasksAsync(
+            CurrentOrganizationId, CurrentUserId, IsManagerOrAbove,
+            search, status, categoryId, sort, page, pageSize);
 
         ViewBag.Search = search;
         ViewBag.StatusFilter = status;
         ViewBag.CategoryFilter = categoryId;
         ViewBag.Sort = sort;
-        ViewBag.Page = page;
-        ViewBag.PageSize = pageSize;
-        ViewBag.TotalCount = total;
-        ViewBag.TotalPages = (int)Math.Ceiling((double)total / pageSize);
+        ViewBag.Page = result.Page;
+        ViewBag.PageSize = result.PageSize;
+        ViewBag.TotalCount = result.TotalCount;
+        ViewBag.TotalPages = result.TotalPages;
         ViewBag.Categories = new SelectList(await Context.Categories.Where(c => c.OrganizationId == CurrentOrganizationId).AsNoTracking().ToListAsync(), "Id", "Name", categoryId);
         ViewBag.Statuses = new SelectList(Enum.GetValues<TaskItemStatus>().Cast<TaskItemStatus>().Select(s => new { Value = (int)s, Text = s.ToString() }), "Value", "Text", status.HasValue ? (int)status.Value : null);
         ViewBag.IsManager = IsManagerOrAbove;
 
-        return View(tasks);
+        return View(result.Items);
     }
 
+    /// <summary>
+    /// Displays the details of a specific task including comments and assignees.
+    /// </summary>
+    /// <param name="id">The ID of the task to display.</param>
+    /// <returns>The task details view, or NotFound if the task does not exist.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Details(int? id)
     {
         if (id == null) return NotFound();
 
-        var task = await Context.Tasks
-            .Include(t => t.Category)
-            .Include(t => t.Assignees).ThenInclude(a => a.User)
-            .Include(t => t.Comments).ThenInclude(c => c.User)
-            .Include(t => t.Comments).ThenInclude(c => c.Replies).ThenInclude(r => r.User)
-            .Include(t => t.ActivityLogs).ThenInclude(al => al.User)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
-
+        TaskItem? task = await _taskService.GetTaskDetailsAsync(id.Value, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
 
         return View(task);
     }
 
+    /// <summary>
+    /// Handles adding a comment to a task.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to comment on.</param>
+    /// <param name="content">The comment text content.</param>
+    /// <param name="parentCommentId">Optional ID of a parent comment for replies.</param>
+    /// <returns>Redirects to the task details page after adding the comment.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> AddComment(int taskId, string content, int? parentCommentId)
     {
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == taskId && t.OrganizationId == CurrentOrganizationId);
-
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
-
         if (string.IsNullOrWhiteSpace(content))
         {
             TempData["Error"] = "Comment cannot be empty.";
             return RedirectToAction(nameof(Details), new { id = taskId });
         }
 
-        var comment = new TaskComment
-        {
-            TaskItemId = taskId,
-            UserId = CurrentUserId,
-            Content = content.Trim(),
-            ParentCommentId = parentCommentId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        Context.TaskComments.Add(comment);
-        await Context.SaveChangesAsync();
-
-        await LogActivityAsync(taskId, "Comment", null, "Added a comment");
-
-        var assigneeIds = task.Assignees.Where(a => a.UserId != CurrentUserId).Select(a => a.UserId).ToList();
-        foreach (var uid in assigneeIds)
-        {
-            await CreateNotificationAsync(uid, $"{CurrentUserName} commented on \"{task.Title}\"", $"/Tasks/Details/{taskId}");
-        }
+        string userName = CurrentUserName;
+        await _taskService.AddCommentAsync(taskId, content, parentCommentId, CurrentUserId, CurrentOrganizationId, IsManagerOrAbove, userName);
 
         TempData["Success"] = "Comment added.";
         return RedirectToAction(nameof(Details), new { id = taskId });
     }
 
+    /// <summary>
+    /// Displays the task creation form with category and team member selections.
+    /// </summary>
+    /// <returns>The create task view with a TaskViewModel.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Create()
     {
-        var vm = new TaskViewModel
-        {
-            Categories = await Context.Categories.Where(c => c.OrganizationId == CurrentOrganizationId).ToListAsync(),
-            TeamMembers = IsManagerOrAbove ? await GetTeamMembersAsync() : new List<User>(),
-            AssigneeId = IsManagerOrAbove ? null : CurrentUserId
-        };
+        TaskViewModel vm = await _taskService.GetCreateModelAsync(CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         return View(vm);
     }
 
+    /// <summary>
+    /// Handles the creation of a new task.
+    /// </summary>
+    /// <param name="vm">The task view model containing the new task data.</param>
+    /// <returns>Redirects to the task index on success, or returns the create view with validation errors.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> Create(TaskViewModel vm)
     {
         if (ModelState.IsValid)
         {
-            var task = new TaskItem
-            {
-                Title = vm.Title,
-                Description = vm.Description,
-                Status = vm.Status,
-                Priority = vm.Priority,
-                DueDate = vm.DueDate,
-                CategoryId = vm.CategoryId,
-                UserId = CurrentUserId,
-                OrganizationId = CurrentOrganizationId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            Context.Add(task);
-            await Context.SaveChangesAsync();
-
-            var assigneeId = IsManagerOrAbove ? (vm.AssigneeId ?? CurrentUserId) : CurrentUserId;
-
-            Context.TaskAssignees.Add(new TaskAssignee
-            {
-                TaskItemId = task.Id,
-                UserId = assigneeId,
-                IsPrimary = true
-            });
-            await Context.SaveChangesAsync();
-
-            await LogActivityAsync(task.Id, "Task", null, $"Created task \"{task.Title}\"");
-            if (assigneeId != CurrentUserId)
-            {
-                var userName = await Context.Users.Where(u => u.Id == assigneeId).Select(u => u.Name).FirstOrDefaultAsync();
-                await CreateNotificationAsync(assigneeId, $"{CurrentUserName} assigned you to \"{task.Title}\"", $"/Tasks/Details/{task.Id}");
-            }
-
+            await _taskService.CreateTaskAsync(vm, CurrentUserId, CurrentOrganizationId, IsManagerOrAbove);
             TempData["Success"] = "Task created successfully!";
             return RedirectToAction(nameof(Index));
         }
 
         vm.Categories = await Context.Categories.Where(c => c.OrganizationId == CurrentOrganizationId).ToListAsync();
-        vm.TeamMembers = IsManagerOrAbove ? await GetTeamMembersAsync() : new List<User>();
+        vm.TeamMembers = IsManagerOrAbove ? await _teamService.GetTeamMembersAsync(CurrentOrganizationId, CurrentUserId) : new List<User>();
         return View(vm);
     }
 
+    /// <summary>
+    /// Displays the task edit form for the specified task.
+    /// </summary>
+    /// <param name="id">The ID of the task to edit.</param>
+    /// <returns>The edit task view with a TaskViewModel, or NotFound if the task does not exist.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Edit(int? id)
     {
         if (id == null) return NotFound();
 
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
-
-        var primaryAssignee = task.Assignees.FirstOrDefault(a => a.IsPrimary);
-
-        var vm = new TaskViewModel
-        {
-            Id = task.Id,
-            Title = task.Title,
-            Description = task.Description,
-            Status = task.Status,
-            Priority = task.Priority,
-            DueDate = task.DueDate,
-            CategoryId = task.CategoryId,
-            AssigneeId = primaryAssignee?.UserId,
-            Categories = await Context.Categories.Where(c => c.OrganizationId == CurrentOrganizationId).ToListAsync(),
-            TeamMembers = IsManagerOrAbove ? await GetTeamMembersAsync() : new List<User>()
-        };
+        TaskViewModel? vm = await _taskService.GetEditModelAsync(id.Value, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
+        if (vm == null) return NotFound();
 
         return View(vm);
     }
 
+    /// <summary>
+    /// Handles the update of an existing task.
+    /// </summary>
+    /// <param name="id">The ID of the task to update.</param>
+    /// <param name="vm">The task view model with updated data.</param>
+    /// <returns>Redirects to the task index on success, returns the edit view with validation errors, or NotFound if IDs do not match.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Edit(int id, TaskViewModel vm)
     {
         if (id != vm.Id) return NotFound();
 
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
-
         if (ModelState.IsValid)
         {
-            var oldTitle = task.Title;
-            var oldStatus = task.Status;
-            var oldPriority = task.Priority;
-            var oldDueDate = task.DueDate;
-            var oldCategoryId = task.CategoryId;
-            var oldAssigneeId = task.Assignees.FirstOrDefault(a => a.IsPrimary)?.UserId;
-
-            task.Title = vm.Title;
-            task.Description = vm.Description;
-            task.Status = vm.Status;
-            task.Priority = vm.Priority;
-            task.DueDate = vm.DueDate;
-            task.CategoryId = vm.CategoryId;
-            task.UpdatedAt = DateTime.UtcNow;
-
-            if (oldTitle != vm.Title)
-                await LogActivityAsync(task.Id, "Title", oldTitle, vm.Title);
-            if ((task.Description ?? "") != (vm.Description ?? ""))
-                await LogActivityAsync(task.Id, "Description", task.Description, vm.Description);
-            if (oldStatus != vm.Status)
-                await LogActivityAsync(task.Id, "Status", oldStatus.ToString(), vm.Status.ToString());
-            if (oldPriority != vm.Priority)
-                await LogActivityAsync(task.Id, "Priority", oldPriority.ToString(), vm.Priority.ToString());
-            if (oldDueDate != vm.DueDate)
-                await LogActivityAsync(task.Id, "DueDate", oldDueDate?.ToString("yyyy-MM-dd"), vm.DueDate?.ToString("yyyy-MM-dd"));
-            if (oldCategoryId != vm.CategoryId)
-            {
-                var oldCat = oldCategoryId.HasValue ? (await Context.Categories.FindAsync(oldCategoryId))?.Name : null;
-                var newCat = vm.CategoryId.HasValue ? (await Context.Categories.FindAsync(vm.CategoryId))?.Name : null;
-                await LogActivityAsync(task.Id, "Category", oldCat, newCat);
-            }
-
-            if (IsManagerOrAbove && vm.AssigneeId.HasValue && vm.AssigneeId.Value != oldAssigneeId)
-            {
-                Context.TaskAssignees.RemoveRange(task.Assignees);
-                Context.TaskAssignees.Add(new TaskAssignee
-                {
-                    TaskItemId = task.Id,
-                    UserId = vm.AssigneeId.Value,
-                    IsPrimary = true
-                });
-                var userName = await Context.Users.Where(u => u.Id == vm.AssigneeId.Value).Select(u => u.Name).FirstOrDefaultAsync();
-                await LogActivityAsync(task.Id, "Assignee", oldAssigneeId.HasValue ? (await Context.Users.Where(u => u.Id == oldAssigneeId.Value).Select(u => u.Name).FirstOrDefaultAsync()) : null, userName);
-                await CreateNotificationAsync(vm.AssigneeId.Value, $"{CurrentUserName} assigned you to \"{task.Title}\"", $"/Tasks/Details/{task.Id}");
-            }
-
-            await Context.SaveChangesAsync();
+            await _taskService.UpdateTaskAsync(id, vm, CurrentUserId, CurrentOrganizationId, IsManagerOrAbove);
             TempData["Success"] = "Task updated successfully!";
             return RedirectToAction(nameof(Index));
         }
 
         vm.Categories = await Context.Categories.Where(c => c.OrganizationId == CurrentOrganizationId).ToListAsync();
-        vm.TeamMembers = IsManagerOrAbove ? await GetTeamMembersAsync() : new List<User>();
+        vm.TeamMembers = IsManagerOrAbove ? await _teamService.GetTeamMembersAsync(CurrentOrganizationId, CurrentUserId) : new List<User>();
         return View(vm);
     }
 
+    /// <summary>
+    /// Handles updating the status of a task.
+    /// </summary>
+    /// <param name="id">The ID of the task to update.</param>
+    /// <param name="status">The new task status.</param>
+    /// <returns>Redirects to the task index after updating the status.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> UpdateStatus(int id, TaskItemStatus status)
     {
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
-
-        var oldStatus = task.Status;
-        task.Status = status;
-        task.UpdatedAt = DateTime.UtcNow;
-        await Context.SaveChangesAsync();
-
-        if (oldStatus != status)
-            await LogActivityAsync(task.Id, "Status", oldStatus.ToString(), status.ToString());
-
+        await _taskService.UpdateStatusAsync(id, status, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         TempData["Success"] = $"Task status updated to {status}";
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>
+    /// Displays the delete confirmation page for a task.
+    /// </summary>
+    /// <param name="id">The ID of the task to delete.</param>
+    /// <returns>The delete confirmation view with the task details, or NotFound if the task does not exist.</returns>
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int? id)
     {
         if (id == null) return NotFound();
 
-        var task = await Context.Tasks
-            .Include(t => t.Category)
-            .Include(t => t.Assignees).ThenInclude(a => a.User)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
+        TaskItem? task = await _taskService.GetDeleteModelAsync(id.Value, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
 
         return View(task);
     }
 
+    /// <summary>
+    /// Handles the deletion of a task after confirmation.
+    /// </summary>
+    /// <param name="id">The ID of the task to delete.</param>
+    /// <returns>Redirects to the task index after deletion.</returns>
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var task = await Context.Tasks
-            .Include(t => t.Assignees)
-            .FirstOrDefaultAsync(t => t.Id == id && t.OrganizationId == CurrentOrganizationId);
-        if (task == null) return NotFound();
-
-        var isAssigned = task.Assignees.Any(a => a.UserId == CurrentUserId);
-        if (!IsManagerOrAbove && !isAssigned)
-            return NotFound();
-
-        Context.TaskAssignees.RemoveRange(task.Assignees);
-        Context.Tasks.Remove(task);
-        await Context.SaveChangesAsync();
-
+        await _taskService.DeleteTaskAsync(id, CurrentOrganizationId, CurrentUserId, IsManagerOrAbove);
         TempData["Success"] = "Task deleted successfully!";
         return RedirectToAction(nameof(Index));
     }
 
     private string CurrentUserName => User.FindFirstValue(ClaimTypes.Name) ?? User.Identity?.Name ?? "Unknown";
-
-    private async Task LogActivityAsync(int taskId, string fieldName, string? oldValue, string? newValue)
-    {
-        Context.TaskActivityLogs.Add(new TaskActivityLog
-        {
-            TaskItemId = taskId,
-            UserId = CurrentUserId,
-            FieldName = fieldName,
-            OldValue = oldValue,
-            NewValue = newValue,
-            CreatedAt = DateTime.UtcNow
-        });
-        await Context.SaveChangesAsync();
-    }
-
-    private async Task CreateNotificationAsync(int userId, string message, string? link = null)
-    {
-        Context.Notifications.Add(new Notification
-        {
-            UserId = userId,
-            Message = message,
-            Link = link,
-            CreatedAt = DateTime.UtcNow
-        });
-        await Context.SaveChangesAsync();
-    }
 }

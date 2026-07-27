@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #6C5CE7;
+  --primary-rgb: 108, 92, 231;
+  --primary-dark: #5843d8;
+  --primary-light: #EDEAFE;
+
+  --blue: #4C6FFF;
+  --blue-light: #EAEFFF;
+  --green: #17B26A;
+  --green-light: #E6F9EF;
+  --orange: #F79009;
+  --orange-light: #FEF3E1;
+  --red: #F04438;
+  --red-light: #FEECEB;
+  --teal: #15B8A6;
+  --teal-light: #E4FAF7;
+  --gray: #667085;
+  --gray-light: #EEF0F4;
+
+  --bg-main: #F5F5FA;
+  --surface: #FFFFFF;
+  --surface-alt: #FAFAFD;
+  --border: #E7E7F1;
+  --dark: #171724;
+  --text-primary: #171724;
+  --text-secondary: #5B5B72;
+  --text-muted: #91909F;
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --card-shadow: 0 1px 2px rgba(23, 23, 36, 0.04), 0 8px 24px -12px rgba(23, 23, 36, 0.10);
+  --card-shadow-hover: 0 4px 10px rgba(23, 23, 36, 0.06), 0 16px 32px -12px rgba(23, 23, 36, 0.16);
+
+  --font-display: 'Manrope', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --sidebar-w: 264px;
+  --sidebar-w-collapsed: 84px;
+  --topbar-h: 72px;
+}
+
+[data-theme="dark"] {
+  --bg-main: #121218;
+  --surface: #191922;
+  --surface-alt: #1E1E29;
+  --border: #2B2B38;
+  --dark: #FFFFFF;
+  --text-primary: #FFFFFF;
+  --text-secondary: #FFFFFF;
+  --text-muted: #E0E0E0;
+  --primary-light: rgba(108, 92, 231, 0.16);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --card-shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.3), 0 16px 32px -12px rgba(0, 0, 0, 0.6);
+
+  --gray-light: #2B2B38;
+  --blue-light: rgba(76, 111, 255, 0.16);
+  --green-light: rgba(23, 178, 106, 0.16);
+  --orange-light: rgba(247, 144, 9, 0.16);
+  --red-light: rgba(240, 68, 56, 0.16);
+  --teal-light: rgba(21, 184, 166, 0.16);
+}
+
+[data-theme="dark"] .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+}
+
+[data-theme="dark"] .table tbody td {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+  background: var(--surface-alt);
+}
+
+[data-theme="dark"] .text-muted {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .alert-success,
+[data-theme="dark"] .alert-danger {
+  color: #FFFFFF;
+}

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow TMS — Full Code Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C5CE7;
+            --primary-dark: #5843d8;
+            --primary-light: #EDEAFE;
+            --bg: #F5F5FA;
+            --surface: #FFFFFF;
+            --surface-alt: #FAFAFD;
+            --border: #E7E7F1;
+            --text: #171724;
+            --text-secondary: #5B5B72;
+            --text-muted: #91909F;
+            --green: #17B26A;
+            --green-light: #E6F9EF;
+            --red: #F04438;
+            --red-light: #FEECEB;
+            --orange: #F79009;
+            --orange-light: #FEF3E1;
+            --blue: #4C6FFF;
+            --blue-light: #EAEFFF;
+            --radius: 18px;
+            --radius-sm: 12px;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-display: 'Manrope', 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14.5px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+        .header { text-align: center; margin-bottom: 48px; }
+        .header .logo {
+            width: 64px; height: 64px; border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary), #9B8CFF);
+            display: inline-flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 26px; margin-bottom: 16px;
+        }
+        .header h1 { font-family: var(--font-display); font-size: 32px; font-weight: 800; }
+        .header p { color: var(--text-secondary); max-width: 500px; margin: 8px auto 0; }
+        .header .badge {
+            display: inline-block; margin-top: 12px;
+            background: var(--primary-light); color: var(--primary-dark);
+            padding: 6px 16px; border-radius: 999px;
+            font-size: 13px; font-weight: 600;
+        }
+
+        .score-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 40px; }
+        .score-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px;
+            box-shadow: 0 1px 2px rgba(23,23,36,0.04), 0 8px 24px -12px rgba(23,23,36,0.10);
+            text-align: center;
+        }
+        .score-card .circle {
+            width: 72px; height: 72px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-family: var(--font-display); font-size: 24px; font-weight: 800;
+            color: #fff; margin-bottom: 10px;
+        }
+        .score-card .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+        .score-card .sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+        @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+        .chart-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px;
+            box-shadow: 0 1px 2px rgba(23,23,36,0.04), 0 8px 24px -12px rgba(23,23,36,0.10);
+        }
+        .chart-card h3 { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .chart-card h3 i { color: var(--primary); }
+
+        section { margin-bottom: 40px; }
+        section h2 {
+            font-family: var(--font-display); font-size: 22px; font-weight: 800;
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        section h2 i { color: var(--primary); }
+
+        .issue-list { display: flex; flex-direction: column; gap: 12px; }
+        .issue-item {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 16px 20px;
+            box-shadow: 0 1px 2px rgba(23,23,36,0.04);
+            transition: box-shadow 0.2s ease, transform 0.15s ease;
+        }
+        .issue-item:hover { box-shadow: 0 4px 12px rgba(23,23,36,0.08); transform: translateY(-1px); }
+        .issue-item .head { display: flex; align-items: flex-start; gap: 12px; }
+        .issue-item .sev {
+            flex-shrink: 0; padding: 3px 10px; border-radius: 999px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.03em; margin-top: 2px;
+        }
+        .sev-critical { background: var(--red-light); color: var(--red); }
+        .sev-high { background: #FEF3E1; color: #F79009; }
+        .sev-medium { background: var(--blue-light); color: var(--blue); }
+        .sev-low { background: #EEF0F4; color: #667085; }
+        .issue-item .title { font-weight: 600; font-size: 14.5px; flex: 1; }
+        .issue-item .desc { margin-top: 6px; font-size: 13.5px; color: var(--text-secondary); padding-left: 0; }
+        .issue-item .code-ref { margin-top: 6px; font-size: 12px; color: var(--text-muted); font-family: 'SF Mono', 'Fira Code', monospace; background: var(--surface-alt); padding: 2px 8px; border-radius: 6px; display: inline-block; }
+        .issue-item .fix { margin-top: 8px; background: var(--green-light); padding: 8px 12px; border-radius: 8px; font-size: 13px; color: #0a8a4e; display: none; }
+        .issue-item .fix.show { display: block; }
+        .fix-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text-secondary); margin-top: 8px; transition: all 0.15s; }
+        .fix-btn:hover { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary-light); }
+
+        .roadmap { display: flex; flex-direction: column; gap: 16px; }
+        .phase {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 24px;
+            border-left: 4px solid var(--primary);
+        }
+        .phase h3 { font-family: var(--font-display); font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .phase h3 .tag {
+            font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+            background: var(--primary-light); color: var(--primary-dark);
+            font-family: var(--font);
+        }
+        .phase ul { margin: 8px 0 0 20px; color: var(--text-secondary); font-size: 13.5px; }
+        .phase ul li { margin-bottom: 4px; }
+        .phase ul li strong { color: var(--text); }
+
+        .verdict-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .verdict-item {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 18px;
+        }
+        .verdict-item h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+        .verdict-item .bar-wrap { height: 8px; background: var(--surface-alt); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+        .verdict-item .bar-fill { height: 100%; border-radius: 999px; transition: width 1s ease; }
+
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary-light), #f0edff);
+            border: 1px solid rgba(108,92,231,0.2);
+            border-radius: var(--radius); padding: 24px;
+            margin-bottom: 32px;
+        }
+        .summary-box h3 { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--primary-dark); }
+        .summary-box p { color: var(--text-secondary); margin-top: 8px; font-size: 14px; }
+
+        .btn-toggle { display: inline-flex; align-items: center; gap: 8px; }
+        .stats-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .stats-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+        .stats-table td:first-child { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+        .stats-table td:last-child { text-align: right; }
+
+        .file-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .file-tag {
+            background: var(--surface-alt); border: 1px solid var(--border);
+            border-radius: 8px; padding: 4px 12px; font-size: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace; color: var(--text-secondary);
+        }
+        .file-tag i { margin-right: 4px; color: var(--primary); font-size: 11px; }
+
+        .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+        .tech-item { background: var(--surface-alt); border-radius: 8px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .tech-item .cat { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+        .verdict-summary { text-align: center; padding: 32px; }
+        .verdict-summary .big-score { font-family: var(--font-display); font-size: 72px; font-weight: 800; background: linear-gradient(135deg, var(--primary), #9B8CFF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .verdict-summary .grade { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .verdict-summary .action { margin-top: 16px; font-size: 15px; color: var(--text-secondary); max-width: 400px; margin-left: auto; margin-right: auto; }
+
+        footer { text-align: center; padding: 32px 0; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border); margin-top: 48px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo"><i class="fas fa-tasks"></i></div>
+        <h1>TaskFlow TMS — Full Code Analysis</h1>
+        <p>Comprehensive architecture, security, performance, and code quality review with actionable improvement roadmap</p>
+        <div class="badge"><i class="fas fa-code me-1"></i> C# .NET 9.0 &middot; ASP.NET Core MVC &middot; EF Core + SQLite</div>
+    </div>
+
+    <!-- Verdict Summary -->
+    <div class="verdict-summary summary-box">
+        <div class="big-score">6.6</div>
+        <div class="grade"><i class="fas fa-star" style="color: var(--orange);"></i> B- Overall Project Score</div>
+        <div class="action">
+            Solid foundation with good architecture patterns. Needs service layer extraction,
+            testing infrastructure, and resolution of a few critical gaps.
+        </div>
+    </div>
+
+    <!-- Radar Chart + Bar Chart -->
+    <div class="chart-row">
+        <div class="chart-card">
+            <h3><i class="fas fa-spider"></i> Quality Radar</h3>
+            <div style="position: relative; height: 280px;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-column"></i> Category Breakdown</h3>
+            <div style="position: relative; height: 280px;">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Overview -->
+    <div class="score-overview" id="scoreCards"></div>
+
+    <!-- Project Stats -->
+    <section>
+        <h2><i class="fas fa-cube"></i> Project Stats</h2>
+        <table class="stats-table">
+            <tr><td>Language / Framework</td><td>C# 12 — ASP.NET Core 9.0 MVC</td></tr>
+            <tr><td>ORM / Database</td><td>Entity Framework Core 9.0 — SQLite</td></tr>
+            <tr><td>Total Source Files</td><td>50 (14 Models, 7 ViewModels, 8 Controllers, 18 Views, 1 CSS, 1 JS)</td></tr>
+            <tr><td>Lines of Code (approx)</td><td>~4,500+ (excluding migrations, auto-gen, and vendor)</td></tr>
+            <tr><td>Migrations</td><td>7 incremental migrations with clean evolution</td></tr>
+            <tr><td>Auth</td><td>Cookie-based — BCrypt.Net-Next — Policy-based (3 roles)</td></tr>
+            <tr><td>Frontend</td><td>Bootstrap 5.3, FontAwesome 6, Chart.js 4.4, SortableJS 1.15, jQuery 3.7</td></tr>
+            <tr><td>Tests</td><td><span style="color: var(--red); font-weight: 600;">None</span></td></tr>
+            <tr><td>CI/CD</td><td><span style="color: var(--red); font-weight: 600;">None (empty .github/workflows/)</span></td></tr>
+        </table>
+    </section>
+
+    <!-- Strengths -->
+    <section>
+        <h2><i class="fas fa-thumbs-up" style="color: var(--green);"></i> Strengths</h2>
+        <div class="issue-list">
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Clean Entity-Relationship Design</span></div>
+                <div class="desc">Well-structured models with proper foreign keys, unique constraints (Org+User, Team+User, Task+User), cascade/restrict delete behaviors, and comprehensive indexes in Fluent API. Multi-tenancy via <code>OrganizationId</code> is consistently applied.</div>
+            </div>
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Rich Audit Trail System</span></div>
+                <div class="desc"><code>TaskActivityLog</code> tracks field-level changes with old/new values. Every edit action logs specific changed fields (Title, Status, Priority, DueDate, Category, Assignee) with user attribution.</div>
+                <div class="code-ref">Controllers/TasksController.cs:342-371</div>
+            </div>
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Comprehensive Dashboard & Reports</span></div>
+                <div class="desc">Dashboard with 4 stat cards, recent/upcoming task tables, doughnut chart (status), bar chart (by category). Manager reports include employee efficiency metrics (completion rate, on-time rate, cycle hours, workload breakdown) with Chart.js visualizations.</div>
+            </div>
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Excellent UI/UX & Design System</span></div>
+                <div class="desc">Full design system with CSS custom properties, dark mode (localStorage + prefers-color-scheme), responsive layout, custom scrollbars, reduced-motion support, focus-visible outlines, Kanban with SortableJS drag-drop, and polished component library.</div>
+                <div class="code-ref">wwwroot/css/site.css:1-1003</div>
+            </div>
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Security Foundations</span></div>
+                <div class="desc">BCrypt password hashing, anti-forgery tokens on all POST forms, policy-based authorization (AdminOnly, ManagerOrAbove, TeamLeadOrAbove), org-scoped queries on every endpoint, brute-force login rate limiting (5 attempts / 15 min lockout).</div>
+            </div>
+            <div class="issue-item">
+                <div class="head"><span class="sev sev-low">STRENGTH</span><span class="title">Incremental Migration History</span></div>
+                <div class="desc">7 clean, sequential migrations showing feature evolution from initial schema through org support, teams, Kanban, hours tracking, and comments/activity/notifications.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Weaknesses & Issues -->
+    <section>
+        <h2><i class="fas fa-exclamation-triangle" style="color: var(--red);"></i> Weaknesses & Issues</h2>
+        <div class="issue-list" id="issuesList"></div>
+    </section>
+
+    <!-- Improvement Roadmap -->
+    <section>
+        <h2><i class="fas fa-road" style="color: var(--primary);"></i> Improvement Roadmap</h2>
+        <div class="roadmap">
+            <div class="phase">
+                <h3><i class="fas fa-fire" style="color: var(--red);"></i> Phase 1: Critical Fixes <span class="tag">1-2 days</span></h3>
+                <ul>
+                    <li><strong>Create missing Category views</strong> — Add <code>Views/Categories/Index.cshtml</code>, <code>Create.cshtml</code>, <code>Edit.cshtml</code> to fix runtime errors when navigating from sidebar</li>
+                    <li><strong>Remove stale TMS.http</strong> — Delete the file referencing the non-existent <code>/weatherforecast/</code> endpoint</li>
+                    <li><strong>Fix SidebarViewModel dead code</strong> — Either use it or remove the class to eliminate confusion</li>
+                    <li><strong>Fix ProfileController org-filtering</strong> — The <code>Include(u => u.Tasks)</code> loads tasks across all orgs; add <code>Where</code> filter by <code>OrganizationId</code></li>
+                </ul>
+            </div>
+            <div class="phase">
+                <h3><i class="fas fa-layer-group" style="color: var(--orange);"></i> Phase 2: Architecture — Service Layer <span class="tag">3-5 days</span></h3>
+                <ul>
+                    <li><strong>Create Services directory</strong> with classes like <code>ITaskService / TaskService</code>, <code>ICategoryService / CategoryService</code>, <code>INotificationService / NotificationService</code>, <code>IReportService / ReportService</code></li>
+                    <li><strong>Extract business logic</strong> from controllers into services (especially <code>TasksController</code> at 473 lines and <code>ReportsController</code> at 141 lines)</li>
+                    <li><strong>Register services</strong> in DI container (<code>builder.Services.AddScoped&lt;ITaskService, TaskService&gt;()</code>)</li>
+                    <li><strong>Inject services</strong> into controllers instead of <code>AppDbContext</code> directly</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <h3><i class="fas fa-vial" style="color: var(--green);"></i> Phase 3: Testing & Quality <span class="tag">3-5 days</span></h3>
+                <ul>
+                    <li><strong>Create test project</strong> (<code>TMS.Tests</code>) with xUnit, Moq, FluentAssertions</li>
+                    <li><strong>Write unit tests</strong> for services (task CRUD, auth logic, org-scoping, activity logging)</li>
+                    <li><strong>Write integration tests</strong> for controllers using <code>WebApplicationFactory</code></li>
+                    <li><strong>Configure Roslyn analyzers</strong> and add <code>.editorconfig</code> for code style enforcement</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <h3><i class="fas fa-rocket" style="color: var(--blue);"></i> Phase 4: CI/CD & DevOps <span class="tag">1-2 days</span></h3>
+                <ul>
+                    <li><strong>Configure GitHub Actions</strong> workflow: build, test, publish artifacts</li>
+                    <li><strong>Add code coverage reporting</strong> (Coverlet + ReportGenerator)</li>
+                    <li><strong>Add linting step</strong> (<code>dotnet format --verify-no-changes</code>)</li>
+                    <li><strong>Add security scanning</strong> (Dependabot, CodeQL)</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <h3><i class="fas fa-brush" style="color: var(--teal);"></i> Phase 5: Code Quality & Refactoring <span class="tag">2-3 days</span></h3>
+                <ul>
+                    <li><strong>Extract constants</strong> — Move magic strings (<code>"OrganizationId"</code>, <code>"OrganizationRole"</code>, claim types) to a <code>ClaimConstants</code> static class</li>
+                    <li><strong>Replace sidebar @inject</strong> with a proper <code>ViewComponent</code> for clean data access</li>
+                    <li><strong>Use data-* attributes</strong> for Razor-to-JavaScript data passing instead of <code>JsonSerializer.Serialize</code> in views</li>
+                    <li><strong>Fix GetTeamMembersAsync()</strong> to aggregate across all teams, not just the first one</li>
+                    <li><strong>Consistent input validation</strong> — Use model binding with data annotations everywhere instead of manual checks</li>
+                </ul>
+            </div>
+            <div class="phase">
+                <h3><i class="fas fa-gem" style="color: var(--primary);"></i> Phase 6: Advanced Features <span class="tag">4-7 days</span></h3>
+                <ul>
+                    <li><strong>Add real-time notifications</strong> via SignalR (replace 30s polling)</li>
+                    <li><strong>Add file attachments</strong> to tasks (with cloud storage integration)</li>
+                    <li><strong>Add email notifications</strong> for task assignments and comments</li>
+                    <li><strong>Add filtering by team/project</strong> and role-based access at project level</li>
+                    <li><strong>Add pagination component</strong> (extract from the inline logic in Tasks Index)</li>
+                    <li><strong>Add localization</strong> (RESX files) for multi-language support</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Stack -->
+    <section>
+        <h2><i class="fas fa-microchip"></i> Technology Stack</h2>
+        <div class="tech-grid">
+            <div class="tech-item"><i class="fas fa-code"></i> C# 12 <span class="cat">Language</span></div>
+            <div class="tech-item"><i class="fas fa-globe"></i> ASP.NET Core 9.0 <span class="cat">Framework</span></div>
+            <div class="tech-item"><i class="fas fa-database"></i> EF Core 9.0 <span class="cat">ORM</span></div>
+            <div class="tech-item"><i class="fas fa-database"></i> SQLite <span class="cat">Database</span></div>
+            <div class="tech-item"><i class="fas fa-lock"></i> BCrypt.Net-Next <span class="cat">Auth</span></div>
+            <div class="tech-item"><i class="fas fa-cookie"></i> Cookie Auth <span class="cat">Auth</span></div>
+            <div class="tech-item"><i class="fab fa-bootstrap"></i> Bootstrap 5.3 <span class="cat">UI</span></div>
+            <div class="tech-item"><i class="fab fa-font-awesome"></i> FontAwesome 6 <span class="cat">Icons</span></div>
+            <div class="tech-item"><i class="fas fa-chart-simple"></i> Chart.js 4.4 <span class="cat">Charts</span></div>
+            <div class="tech-item"><i class="fas fa-arrows-up-down"></i> SortableJS 1.15 <span class="cat">Drag-Drop</span></div>
+            <div class="tech-item"><i class="fas fa-file-lines"></i> Swashbuckle <span class="cat">API Docs</span></div>
+            <div class="tech-item"><i class="fab fa-js"></i> jQuery 3.7 <span class="cat">Client</span></div>
+        </div>
+    </section>
+
+    <!-- Key Files -->
+    <section>
+        <h2><i class="fas fa-files"></i> Key Source Files</h2>
+        <div class="file-list">
+            <div class="file-tag"><i class="fas fa-play"></i> Program.cs (69 lines)</div>
+            <div class="file-tag"><i class="fas fa-database"></i> Data/AppDbContext.cs (325 lines)</div>
+            <div class="file-tag"><i class="fas fa-tasks"></i> Controllers/TasksController.cs (473 lines)</div>
+            <div class="file-tag"><i class="fas fa-home"></i> Controllers/HomeController.cs (59 lines)</div>
+            <div class="file-tag"><i class="fas fa-user-shield"></i> Controllers/BaseController.cs (86 lines)</div>
+            <div class="file-tag"><i class="fas fa-door-open"></i> Controllers/AccountController.cs</div>
+            <div class="file-tag"><i class="fas fa-chart-line"></i> Controllers/ReportsController.cs (141 lines)</div>
+            <div class="file-tag"><i class="fas fa-bell"></i> Controllers/NotificationsController.cs (81 lines)</div>
+            <div class="file-tag"><i class="fas fa-palette"></i> wwwroot/css/site.css (1003 lines)</div>
+            <div class="file-tag"><i class="fab fa-js"></i> wwwroot/js/site.js (108 lines)</div>
+            <div class="file-tag"><i class="fas fa-cubes"></i> Models/ (14 files)</div>
+            <div class="file-tag"><i class="fas fa-eye"></i> ViewModels/ (7 files)</div>
+            <div class="file-tag"><i class="fas fa-file-code"></i> Views/ (18 files)</div>
+            <div class="file-tag"><i class="fas fa-arrow-up"></i> Migrations/ (7 migrations)</div>
+        </div>
+    </section>
+
+    <footer>
+        TaskFlow TMS — Analysis generated on July 27, 2026 &middot; Built for actionable improvement
+    </footer>
+</div>
+
+<script>
+    // ---- SCORE DATA ----
+    const scores = [
+        { label: 'Architecture', score: 6.5, color: '#6C5CE7', desc: 'Good MVC but missing service layer, repo pattern, ViewComponent for sidebar' },
+        { label: 'Code Quality', score: 7.0, color: '#4C6FFF', desc: 'Clean models, good config, but controllers too large, no tests' },
+        { label: 'Security', score: 8.0, color: '#17B26A', desc: 'BCrypt, antiforgery, policies, rate-limiting. Razor JSON serialization minor risk' },
+        { label: 'Performance', score: 7.0, color: '#F79009', desc: 'EF Core queries are good. N+1 avoided. No caching, no pagination component' },
+        { label: 'UI / UX', score: 8.5, color: '#15B8A6', desc: 'Excellent design system, dark mode, responsive, accessible, Kanban drag-drop' },
+        { label: 'Maintainability', score: 5.0, color: '#F04438', desc: 'No tests, no CI/CD, no analyzers, dead code, missing views, magic strings' },
+        { label: 'Documentation', score: 4.0, color: '#667085', desc: 'No XML docs, no README detail, no API docs beyond Swagger' },
+        { label: 'Testing', score: 1.0, color: '#dc3545', desc: 'Zero tests — no test project, no unit, no integration, no coverage' },
+    ];
+
+    // ---- ISSUES DATA ----
+    const issues = [
+        { sev: 'critical', title: 'CategoriesController has no views', desc: 'Category controller compiles but has zero view files. Navigating to "/Categories/Index" from the sidebar link will produce a runtime YSOD error.', code: 'Controllers/CategoriesController.cs → Views/Categories/', fix: 'Create Views/Categories/Index.cshtml, Create.cshtml, and Edit.cshtml with proper forms' },
+        { sev: 'critical', title: 'No test project exists', desc: 'Zero test coverage. No xUnit/NUnit/MSTest project. The seed data ironically includes "Write unit tests" as a task item.', code: 'No *.Tests project found', fix: 'Create TMS.Tests project with xUnit, Moq, and FluentAssertions. Write tests for TaskService, auth logic, org-scoping, and activity logging.' },
+        { sev: 'high', title: 'No service layer — business logic in controllers', desc: 'TasksController is 473 lines with raw DbContext usage, duplicated query patterns, inline notification creation, activity logging, and team member resolution. ReportsController has complex in-memory aggregation logic.', code: 'Controllers/TasksController.cs, Controllers/ReportsController.cs', fix: 'Extract ITaskService, ICategoryService, INotificationService, IReportService into a Services/ folder. Controllers should only orchestrate.' },
+        { sev: 'high', title: 'Sidebar uses @inject AppDbContext (mixing data access with presentation)', desc: '_Sidebar.cshtml injects DbContext directly and queries categories. This violates separation of concerns and cannot be unit tested.', code: 'Views/Shared/_Sidebar.cshtml:1-12', fix: 'Create a SidebarViewComponent that loads data via a service. Pass SidebarViewModel through the component.' },
+        { sev: 'high', title: 'Razor-to-JS data passing uses raw JSON serialization (XSS risk)', desc: 'Views like Home/Index, Reports/Index, Profile/_ActivityChart use @string.Join and JsonSerializer.Serialize to inject data into JavaScript. If any data becomes user-controllable, this enables XSS.', code: 'Views/Home/Index.cshtml:331-338', fix: 'Use data-* attributes on HTML elements or a JSON endpoint. Pass data through ViewModel and serialize in script tag with proper encoding.' },
+        { sev: 'medium', title: 'GetTeamMembersAsync() only returns first team\'s members', desc: 'The method queries the first team membership for the current user and then returns all members of that team. Users in multiple teams only see members of the first team.', code: 'Controllers/TasksController.cs:78-93', fix: 'Aggregate across all teams: get all TeamIds the user belongs to, then get members from all those teams (deduplicated).' },
+        { sev: 'medium', title: 'Magic strings for claim types scattered across codebase', desc: '"OrganizationId" and "OrganizationRole" claim types are hardcoded in BaseController, AccountController, and ProfileController. No central constants class.', code: 'Controllers/BaseController.cs:38-48, Controllers/AccountController.cs', fix: 'Create a ClaimConstants static class with const string values for all claim types.' },
+        { sev: 'medium', title: 'Profile Index loads all tasks across all orgs', desc: 'ProfileController loads User.Include(u => u.Tasks) without filtering by OrganizationId, potentially loading tasks from other orgs.', code: 'Controllers/ProfileController.cs', fix: 'Add .Where(t => t.OrganizationId == CurrentOrganizationId) filter when loading user tasks.' },
+        { sev: 'medium', title: 'HomeController has redundant await pattern', desc: 'Task.WhenAll waits for all tasks, then each individual await returns already-completed tasks. While not incorrect, it adds unnecessary overhead and confuses readers.', code: 'Controllers/HomeController.cs:40-55', fix: 'Remove individual awaits after WhenAll; access .Result directly (or restructure with tuple deconstruction).' },
+        { sev: 'low', title: 'SidebarViewModel class is defined but never used', desc: 'The SidebarViewModel class in ViewModels/ exists but the sidebar view ignores it and uses @inject instead. Dead code.', code: 'ViewModels/SidebarViewModel.cs', fix: 'Either use it via a ViewComponent or remove the dead class.' },
+        { sev: 'low', title: 'Stale TMS.http file references non-existent endpoint', desc: 'TMS.http contains requests to /weatherforecast/ which does not exist. This will confuse developers.', code: 'TMS.http (root of TMS project)', fix: 'Delete or update to reference real endpoints (e.g., GET /Tasks/Board).' },
+        { sev: 'low', title: 'No CORS configuration', desc: 'No CORS policies configured. Works fine for same-origin MVC but would block any SPA/ mobile app client.', code: 'Program.cs', fix: 'Add builder.Services.AddCors() if cross-origin access is planned.' },
+        { sev: 'low', title: 'No caching strategy', desc: 'No response caching, no distributed cache, no EF Core Query Cache. Dashboard queries hit the database on every page load.', code: 'Controllers/HomeController.cs', fix: 'Add IMemoryCache or IDistributedCache for dashboard stats with short TTL (30-60s).' },
+        { sev: 'low', title: 'Large monolithic CSS file (1003 lines)', desc: 'site.css could be split into partial files for maintainability: layout.css, components.css, utilities.css, kanban.css, dark-mode.css.', code: 'wwwroot/css/site.css', fix: 'Split into partial CSS files and use @import or build tooling (e.g., Sass).' },
+        { sev: 'low', title: 'No .editorconfig or Roslyn analyzers configured', desc: 'No code style enforcement. No consistent formatting rules across the team.', code: 'Project root', fix: 'Add .editorconfig and enable EnforceCodeStyleInBuild in csproj.' },
+    ];
+
+    const avgScore = (scores.reduce((a, s) => a + s.score, 0) / scores.length).toFixed(1);
+
+    // ---- RENDER SCORE CARDS ----
+    const scoreContainer = document.getElementById('scoreCards');
+    scores.forEach(s => {
+        const pct = (s.score / 10) * 100;
+        const hue = 120 * (s.score / 10);
+        scoreContainer.innerHTML += `
+            <div class="score-card">
+                <div class="circle" style="background: conic-gradient(${s.color} ${pct}%, var(--surface-alt) ${pct}%); color: ${s.score < 4 ? '#fff' : s.color};">
+                    ${s.score.toFixed(1)}
+                </div>
+                <div class="label">${s.label}</div>
+                <div class="sub">${s.desc}</div>
+            </div>
+        `;
+    });
+
+    // ---- RENDER ISSUES ----
+    const issuesContainer = document.getElementById('issuesList');
+    issues.forEach((issue, i) => {
+        issuesContainer.innerHTML += `
+            <div class="issue-item">
+                <div class="head">
+                    <span class="sev sev-${issue.sev}">${issue.sev}</span>
+                    <span class="title">${issue.title}</span>
+                </div>
+                <div class="desc">${issue.desc}</div>
+                ${issue.code ? `<div class="code-ref"><i class="fas fa-location-dot"></i> ${issue.code}</div>` : ''}
+                <div class="fix" id="fix-${i}">${issue.fix}</div>
+                <button class="fix-btn" onclick="document.getElementById('fix-${i}').classList.toggle('show')">
+                    <i class="fas fa-wrench"></i> Show Fix
+                </button>
+            </div>
+        `;
+    });
+
+    // ---- RADAR CHART ----
+    new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+            labels: scores.map(s => s.label),
+            datasets: [{
+                label: 'Score / 10',
+                data: scores.map(s => s.score),
+                backgroundColor: 'rgba(108, 92, 231, 0.15)',
+                borderColor: 'rgba(108, 92, 231, 0.8)',
+                borderWidth: 2,
+                pointBackgroundColor: scores.map(s => s.color),
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 10,
+                    ticks: { stepSize: 2, font: { size: 11 }, backdropColor: 'transparent' },
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    angleLines: { color: 'rgba(0,0,0,0.06)' },
+                    pointLabels: { font: { size: 12, weight: '600' } }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // ---- BAR CHART ----
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: scores.map(s => s.label),
+            datasets: [{
+                label: 'Score / 10',
+                data: scores.map(s => s.score),
+                backgroundColor: scores.map(s => s.color + 'CC'),
+                borderColor: scores.map(s => s.color),
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    max: 10,
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    ticks: { font: { size: 11 } }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11, weight: '600' } }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

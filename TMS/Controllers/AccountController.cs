@@ -2,7 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using TMS.Constants;
 using TMS.Data;
 using TMS.Models;
 
@@ -18,10 +20,13 @@ public class AccountController : Controller
         _context = context;
     }
 
-    private const string OrgIdClaim = "OrganizationId";
-    private const string OrgRoleClaim = "OrganizationRole";
-
+    /// <summary>
+    /// Displays the login page. Redirects authenticated users to the home page.
+    /// </summary>
+    /// <returns>The login view or a redirect to the home page if already authenticated.</returns>
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public IActionResult Login()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -29,8 +34,18 @@ public class AccountController : Controller
         return View();
     }
 
+    /// <summary>
+    /// Handles user authentication with email and password.
+    /// </summary>
+    /// <param name="email">The user's email address.</param>
+    /// <param name="password">The user's password.</param>
+    /// <returns>Redirects to the home page on success, or returns the login view with an error message on failure.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("Login")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login(string email, string password)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -44,17 +59,17 @@ public class AccountController : Controller
             return View();
         }
 
-        var key = email.ToLowerInvariant();
-        if (_failedLogins.TryGetValue(key, out var attempt) && attempt.IsLocked)
+        string key = email.ToLowerInvariant();
+        if (_failedLogins.TryGetValue(key, out FailedAttempt? attempt) && attempt.IsLocked)
         {
             ModelState.AddModelError("", "Account temporarily locked due to too many failed attempts. Try again in 15 minutes.");
             return View();
         }
 
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
+        User? user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
         {
-            var entry = _failedLogins.GetOrAdd(key, _ => new FailedAttempt());
+            FailedAttempt entry = _failedLogins.GetOrAdd(key, _ => new FailedAttempt());
             entry.Count++;
             entry.LastAttempt = DateTime.UtcNow;
             ModelState.AddModelError("", "Invalid email or password");
@@ -63,7 +78,7 @@ public class AccountController : Controller
 
         _failedLogins.TryRemove(key, out _);
 
-        var membership = await _context.OrganizationMemberships
+        OrganizationMembership? membership = await _context.OrganizationMemberships
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.UserId == user.Id);
 
@@ -76,8 +91,8 @@ public class AccountController : Controller
 
         if (membership != null)
         {
-            claims.Add(new Claim(OrgIdClaim, membership.OrganizationId.ToString()));
-            claims.Add(new Claim(OrgRoleClaim, membership.Role.ToString()));
+            claims.Add(new Claim(ClaimConstants.OrganizationId, membership.OrganizationId.ToString()));
+            claims.Add(new Claim(ClaimConstants.OrganizationRole, membership.Role.ToString()));
         }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -88,7 +103,13 @@ public class AccountController : Controller
         return RedirectToAction("Index", "Home");
     }
 
+    /// <summary>
+    /// Displays the registration page. Redirects authenticated users to the home page.
+    /// </summary>
+    /// <returns>The registration view or a redirect to the home page if already authenticated.</returns>
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public IActionResult Register()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -96,8 +117,22 @@ public class AccountController : Controller
         return View();
     }
 
+    /// <summary>
+    /// Handles new user registration and organization creation or joining.
+    /// </summary>
+    /// <param name="name">The user's full name.</param>
+    /// <param name="email">The user's email address.</param>
+    /// <param name="password">The user's password.</param>
+    /// <param name="confirmPassword">Password confirmation.</param>
+    /// <param name="avatarUrl">Optional URL for the user's avatar image.</param>
+    /// <param name="organizationName">The name of the organization to create or join.</param>
+    /// <returns>Redirects to the home page on success, or returns the registration view with validation errors.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("Register")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Register(string name, string email, string password, string confirmPassword, string? avatarUrl, string? organizationName)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -121,7 +156,7 @@ public class AccountController : Controller
 
         if (ModelState.IsValid)
         {
-            var exists = await _context.Users.AnyAsync(u => u.Email == email);
+            bool exists = await _context.Users.AnyAsync(u => u.Email == email);
             if (exists)
             {
                 ModelState.AddModelError("", "Email is already registered");
@@ -140,7 +175,7 @@ public class AccountController : Controller
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            var existingOrg = await _context.Organizations
+            Organization? existingOrg = await _context.Organizations
                 .FirstOrDefaultAsync(o => o.Name == organizationName);
 
             OrganizationRole role;
@@ -155,7 +190,7 @@ public class AccountController : Controller
             {
                 var org = new Organization
                 {
-                    Name = organizationName,
+                    Name = organizationName!,
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.Organizations.Add(org);
@@ -179,8 +214,8 @@ public class AccountController : Controller
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(OrgIdClaim, orgId.ToString()),
-                new Claim(OrgRoleClaim, role.ToString())
+                new Claim(ClaimConstants.OrganizationId, orgId.ToString()),
+                new Claim(ClaimConstants.OrganizationRole, role.ToString())
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -197,8 +232,13 @@ public class AccountController : Controller
         return View();
     }
 
+    /// <summary>
+    /// Signs out the current user and redirects to the login page.
+    /// </summary>
+    /// <returns>A redirect to the login page.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

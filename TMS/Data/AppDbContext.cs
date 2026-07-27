@@ -214,7 +214,7 @@ public class AppDbContext : DbContext
 
     private static void SeedData(ModelBuilder modelBuilder)
     {
-        var pwd = "$2a$11$im1itOCIomo1FryxxRewfOz9dCxfJ6eFBTpoOLiTK/ZAJvYtkUExm";
+        string pwd = "$2a$11$im1itOCIomo1FryxxRewfOz9dCxfJ6eFBTpoOLiTK/ZAJvYtkUExm";
 
         var org = new Organization
         {

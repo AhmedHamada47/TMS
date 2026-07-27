@@ -285,25 +285,65 @@
                     </div>
                     <div class="card-body">
                         <div style="position: relative; height: 220px;">
-                            <canvas id="statusChart"></canvas>
+                            <canvas id="statusChart"
+                                data-todo="@Model.TasksToDo"
+                                data-inprogress="@Model.TasksInProgress"
+                                data-done="@Model.TasksDone"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-chart-simple me-2"></i>Tasks by Category
+                    </div>
+                    <div class="card-body">
+                        @if (Model.CategorySummaries.Any())
+                        {
+                            <div style="position: relative; height: @(Model.CategorySummaries.Count * 50 + 60)px;">
+                                <canvas id="categoryChart"
+                                    data-labels='@Html.Raw(JsonSerializer.Serialize(Model.CategorySummaries.Select(c => c.CategoryName)))'
+                                    data-counts='@Html.Raw(JsonSerializer.Serialize(Model.CategorySummaries.Select(c => c.TaskCount)))'
+                                    data-colors='@Html.Raw(JsonSerializer.Serialize(Model.CategorySummaries.Select(c => c.Color)))'></canvas>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state p-3">
+                                <i class="fas fa-chart-simple"></i>
+                                <h5>No data</h5>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
         (function () {
+            function readJson(el, key) {
+                try { return JSON.parse(el.getAttribute(key)); } catch { return null; }
+            }
+
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var textColor = isDark ? '#FFFFFF' : '#171724';
             var mutedColor = isDark ? '#E0E0E0' : '#91909F';
 
-            var statusCtx = document.getElementById('statusChart');
-            if (statusCtx) {
-                new Chart(statusCtx, {
+            var statusEl = document.getElementById('statusChart');
+            if (statusEl) {
+                new Chart(statusEl, {
                     type: 'doughnut',
                     data: {
                         labels: ['To Do', 'In Progress', 'Done'],
                         datasets: [{
-                            data: [@Model.TasksToDo, @Model.TasksInProgress, @Model.TasksDone],
+                            data: [
+                                parseInt(statusEl.dataset.todo) || 0,
+                                parseInt(statusEl.dataset.inprogress) || 0,
+                                parseInt(statusEl.dataset.done) || 0
+                            ],
                             backgroundColor: ['#667085', '#4C6FFF', '#17B26A'],
                             borderWidth: 0,
                             hoverOffset: 8
@@ -323,16 +363,19 @@
                 });
             }
 
-            var catCtx = document.getElementById('categoryChart');
-            if (catCtx) {
-                new Chart(catCtx, {
+            var catEl = document.getElementById('categoryChart');
+            if (catEl) {
+                var labels = readJson(catEl, 'data-labels') || [];
+                var counts = readJson(catEl, 'data-counts') || [];
+                var colors = readJson(catEl, 'data-colors') || [];
+                new Chart(catEl, {
                     type: 'bar',
                     data: {
-                        labels: [@string.Join(", ", Model.CategorySummaries.Select(c => JsonSerializer.Serialize(c.CategoryName)))],
+                        labels: labels,
                         datasets: [{
                             label: 'Tasks',
-                            data: [@string.Join(", ", Model.CategorySummaries.Select(c => c.TaskCount))],
-                            backgroundColor: [@string.Join(", ", Model.CategorySummaries.Select(c => JsonSerializer.Serialize(c.Color)))],
+                            data: counts,
+                            backgroundColor: colors,
                             borderRadius: 6,
                             borderSkipped: false
                         }]
@@ -360,27 +403,6 @@
         })();
     </script>
 }
-                </div>
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <i class="fas fa-chart-simple me-2"></i>Tasks by Category
-                    </div>
-                    <div class="card-body">
-                        @if (Model.CategorySummaries.Any())
-                        {
-                            <div style="position: relative; height: @(Model.CategorySummaries.Count * 50 + 60)px;">
-                                <canvas id="categoryChart"></canvas>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="empty-state p-3">
-                                <i class="fas fa-chart-simple"></i>
-                                <h5>No data</h5>
-                            </div>
-                        }
-                    </div>
-                </div>
             </div>
         </div>
     </div>

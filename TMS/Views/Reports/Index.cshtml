@@ -56,7 +56,10 @@
         <div class="card-header"><i class="fas fa-chart-simple me-2"></i>Completion vs On-Time Rate</div>
         <div class="card-body">
             <div style="position: relative; height: 260px;">
-                <canvas id="reportChart"></canvas>
+                <canvas id="reportChart"
+                    data-labels='@Html.Raw(JsonSerializer.Serialize(Model.ChartLabels))'
+                    data-completion='@Html.Raw(JsonSerializer.Serialize(Model.ChartCompletionRates))'
+                    data-ontime='@Html.Raw(JsonSerializer.Serialize(Model.ChartOnTimeRates))'></canvas>
             </div>
         </div>
     </div>
@@ -151,9 +154,17 @@ else
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        (function () {
+            function readJson(el, key) {
+                try { return JSON.parse(el.getAttribute(key)); } catch { return null; }
+            }
+
             var canvas = document.getElementById('reportChart');
             if (!canvas) return;
+
+            var labels = readJson(canvas, 'data-labels') || [];
+            var completion = readJson(canvas, 'data-completion') || [];
+            var ontime = readJson(canvas, 'data-ontime') || [];
 
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             var textColor = isDark ? '#FFFFFF' : '#171724';
@@ -162,18 +173,18 @@ else
             new Chart(canvas, {
                 type: 'bar',
                 data: {
-                    labels: @Html.Raw(JsonSerializer.Serialize(Model.ChartLabels)),
+                    labels: labels,
                     datasets: [
                         {
                             label: 'Completion Rate %',
-                            data: @Html.Raw(JsonSerializer.Serialize(Model.ChartCompletionRates)),
+                            data: completion,
                             backgroundColor: '#17B26A',
                             borderRadius: 6,
                             borderSkipped: false
                         },
                         {
                             label: 'On-Time Rate %',
-                            data: @Html.Raw(JsonSerializer.Serialize(Model.ChartOnTimeRates)),
+                            data: ontime,
                             backgroundColor: '#4C6FFF',
                             borderRadius: 6,
                             borderSkipped: false
@@ -203,6 +214,6 @@ else
                     }
                 }
             });
-        });
+        })();
     </script>
 }

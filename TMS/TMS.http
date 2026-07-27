@@ -1,6 +1,0 @@
-@TMS_HostAddress = http://localhost:5213
-
-GET {{TMS_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

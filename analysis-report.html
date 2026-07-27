@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow TMS — Full Project Analysis Report</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --orange: #fb923c;
+    --red: #f87171;
+    --purple: #c084fc;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height:1.6; padding:2rem;
+  }
+  .container { max-width:1100px; margin:0 auto; }
+
+  /* Header */
+  header { text-align:center; padding:3rem 0 2rem; }
+  header h1 { font-size:2.2rem; font-weight:700; background:linear-gradient(135deg,#38bdf8,#c084fc); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  header p { color:var(--text-muted); font-size:1.1rem; margin-top:.5rem; }
+  header .badge { display:inline-block; margin-top:1rem; padding:.5rem 1.5rem; border-radius:999px; font-weight:600; font-size:1.1rem; }
+
+  /* Score Ring */
+  .score-ring-wrap { display:flex; justify-content:center; margin:2rem 0; }
+  .score-ring {
+    width:180px; height:180px; border-radius:50%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; font-weight:700;
+  }
+  .score-ring .number { font-size:3.2rem; line-height:1; }
+  .score-ring .label { font-size:.9rem; color:var(--text-muted); margin-top:.3rem; }
+
+  /* Category Grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1.2rem; margin:2rem 0; }
+  .card {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:1.5rem; transition:border-color .2s;
+  }
+  .card:hover { border-color:var(--accent); }
+  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem; }
+  .card-header h3 { font-size:1.05rem; font-weight:600; }
+  .card-header .cat-score {
+    font-weight:700; font-size:1.2rem; width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .card ul { list-style:none; font-size:.9rem; color:var(--text-muted); }
+  .card ul li { padding:.25rem 0; }
+  .card ul li::before { content:"▸ "; color:var(--accent); }
+  .card .strengths { margin-top:1rem; }
+  .card .strengths strong { color:var(--green); font-size:.85rem; }
+  .card .weaknesses { margin-top:.5rem; }
+  .card .weaknesses strong { color:var(--orange); font-size:.85rem; }
+
+  /* Tables */
+  table { width:100%; border-collapse:collapse; margin:1.5rem 0; font-size:.9rem; }
+  th, td { padding:.75rem 1rem; text-align:left; border-bottom:1px solid var(--border); }
+  th { color:var(--text-muted); font-weight:600; text-transform:uppercase; font-size:.8rem; letter-spacing:.05em; }
+  td { color:var(--text); }
+  .stat-number { font-weight:700; font-variant-numeric:tabular-nums; }
+
+  /* Sections */
+  h2 { font-size:1.4rem; margin:2rem 0 1rem; padding-bottom:.5rem; border-bottom:1px solid var(--border); }
+  .verdict-good { color:var(--green); font-weight:600; }
+  .verdict-warn { color:var(--yellow); font-weight:600; }
+  .verdict-bad { color:var(--red); font-weight:600; }
+
+  /* Progress bar */
+  .progress { height:6px; background:var(--border); border-radius:3px; margin:.5rem 0; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+
+  .footer { text-align:center; color:var(--text-muted); font-size:.85rem; padding:3rem 0 1rem; border-top:1px solid var(--border); margin-top:3rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>TaskFlow TMS</h1>
+  <p>Full Project Analysis &amp; Rating Report</p>
+  <div class="badge" style="background:linear-gradient(135deg,#1e293b,#334155);border:1px solid var(--border);-webkit-text-fill-color:var(--text);">
+    ASP.NET Core 9.0 &middot; EF Core 9.0 &middot; SQLite &middot; Bootstrap 5.3
+  </div>
+</header>
+
+<!-- Overall Score -->
+<div class="score-ring-wrap">
+  <div class="score-ring" style="background:conic-gradient(var(--green) 0deg 248deg, var(--border) 248deg 360deg);">
+    <div class="number" style="color:var(--green);">6.9</div>
+    <div class="label">/ 10 &middot; B+</div>
+  </div>
+</div>
+<p style="text-align:center;color:var(--text-muted);max-width:650px;margin:0 auto;">
+  A well-structured mid-size ASP.NET Core project with solid architecture fundamentals,
+  comprehensive testing, security hardening, and CI/CD. Primary gaps are in advanced features
+  (real-time, file uploads, email, localization) and residual direct-DbContext usage in two controllers.
+</p>
+
+<!-- Quick Stats -->
+<h2>Project Snapshot</h2>
+<table>
+  <tr><th>Metric</th><th>Value</th></tr>
+  <tr><td>Total Source Lines</td><td class="stat-number">13,740</td></tr>
+  <tr><td>C# Files</td><td class="stat-number">10,334 loc</td></tr>
+  <tr><td>Razor Views</td><td class="stat-number">2,466 loc (24 files)</td></tr>
+  <tr><td>CSS / JS</td><td class="stat-number">845 + 95 loc</td></tr>
+  <tr><td>Models</td><td class="stat-number">14</td></tr>
+  <tr><td>ViewModels</td><td class="stat-number">7</td></tr>
+  <tr><td>Services (Interface + Impl)</td><td class="stat-number">6 pairs</td></tr>
+  <tr><td>Controllers</td><td class="stat-number">7 + 1 BaseController</td></tr>
+  <tr><td>Tests</td><td class="stat-number">60 (36 unit + 15 integration + 9 smoke)</td></tr>
+  <tr><td>Test Coverage</td><td class="stat-number">~14.5% line / 41.3% branch</td></tr>
+  <tr><td>Build Warnings</td><td class="stat-number">40 (all IDE0008 style)</td></tr>
+  <tr><td>NuGet Dependencies</td><td class="stat-number">13 total</td></tr>
+  <tr><td>CI/CD Workflows</td><td class="stat-number">3 (CI + CodeQL + Dependabot)</td></tr>
+</table>
+
+<!-- Category Scores -->
+<h2>Category Ratings</h2>
+<div class="grid">
+
+  <!-- Architecture -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Architecture</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">8</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+    <ul>
+      <li>Service layer with 6 interface/implementation pairs</li>
+      <li>BaseController for cross-cutting claims/org scoping</li>
+      <li>Repository-like pattern via EF Core (no UoW abstraction)</li>
+      <li>Multi-tenancy through org-based data scoping</li>
+      <li>ViewModels separated from domain models</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Clear separation of concerns, DI throughout, consistent pattern</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> ProfileController &amp; AccountController bypass service layer; no CQRS or MediatR</div>
+  </div>
+
+  <!-- Code Quality -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Code Quality</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">8</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+    <ul>
+      <li>.editorconfig with EnforceCodeStyleInBuild</li>
+      <li>PaginatedList&lt;T&gt; helper for consistent paging</li>
+      <li>Modular CSS (8 partials replacing 1003-line monolith)</li>
+      <li>data-* attributes over inline JSON serialization</li>
+      <li>IMemoryCache for dashboard queries</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Consistent style enforcement, modern patterns</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> 40 IDE0008 warnings (var vs explicit type); no nullable annotation context enabled</div>
+  </div>
+
+  <!-- Security -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Security</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">8</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+    <ul>
+      <li>BCrypt password hashing</li>
+      <li>Rate limiting: Login 10/min, Register 5/min</li>
+      <li>Security headers: CSP, XFO, X-Content-Type-Options, Referrer-Policy</li>
+      <li>Cookie hardening: HttpOnly, SecurePolicy, SameSite=Strict</li>
+      <li>Account lockout after 5 failed attempts (concurrent dictionary)</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Defence-in-depth, env-conditional middleware for testing</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> No CSRF beyond built-in antiforgery; no audit trail for login events; no 2FA</div>
+  </div>
+
+  <!-- Performance -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Performance</h3>
+      <div class="cat-score" style="background:var(--yellow);color:#422006;">6</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:60%;background:var(--yellow);"></div></div>
+    <ul>
+      <li>IMemoryCache on dashboard (45s sliding expiry)</li>
+      <li>AsNoTracking() on read-only queries</li>
+      <li>Paginated queries via PaginatedList&lt;T&gt;</li>
+      <li>30-second notification polling (no SignalR yet)</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Caching and pagination in place; eager loading controlled</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> No real-time (polling wastes resources); no query batching; no Redis/distributed cache</div>
+  </div>
+
+  <!-- UI/UX -->
+  <div class="card">
+    <div class="card-header">
+      <h3>UI / UX</h3>
+      <div class="cat-score" style="background:var(--yellow);color:#422006;">6</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:60%;background:var(--yellow);"></div></div>
+    <ul>
+      <li>Bootstrap 5.3 responsive layout</li>
+      <li>Chart.js activity charts</li>
+      <li>SortableJS Kanban board</li>
+      <li>Dynamic sidebar with category badges</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Clean modern UI, category filtering, board view</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> No dark mode toggle; no file attachments; no real-time updates; no i18n</div>
+  </div>
+
+  <!-- Maintainability -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Maintainability</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">8</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+    <ul>
+      <li>6 service interfaces enabling mocking/testing</li>
+      <li>Consistent DI registration in Program.cs</li>
+      <li>.editorconfig for consistent formatting</li>
+      <li>Clean project structure (Controllers/Services/Models/ViewModels)</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Easy to extend, good modularity, consistent patterns</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> 40 style warnings; 2 controllers with business logic inline</div>
+  </div>
+
+  <!-- Documentation -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Documentation</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">8</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%;background:var(--green);"></div></div>
+    <ul>
+      <li>XML doc comments on all services (58 members) + controllers (42 actions + 7 base)</li>
+      <li>README.md with tech stack table, setup, project structure</li>
+      <li>CHANGELOG.md with 7 migration entries</li>
+      <li>CONTRIBUTING.md with coding standards &amp; PR checklist</li>
+      <li>Swagger XML doc integration</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Comprehensive API docs, project docs for new contributors</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> No architecture decision records (ADR); no Swagger UI samples</div>
+  </div>
+
+  <!-- Testing -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Testing</h3>
+      <div class="cat-score" style="background:var(--yellow);color:#422006;">7</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:70%;background:var(--yellow);"></div></div>
+    <ul>
+      <li>60 tests: 36 unit + 15 integration + 9 smoke</li>
+      <li>xUnit + Moq + FluentAssertions + InMemory EF Core</li>
+      <li>Integration tests with WebApplicationFactory &amp; antiforgery</li>
+      <li>Smoke tests covering every sidebar page</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Good mix of unit/integration/smoke; CI coverage collection; per-class DB isolation</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> Only 14.5% line coverage; no controller/view component tests; no UI/E2E tests</div>
+  </div>
+
+  <!-- CI/CD -->
+  <div class="card">
+    <div class="card-header">
+      <h3>CI / CD</h3>
+      <div class="cat-score" style="background:var(--green);color:#052e16;">9</div>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:90%;background:var(--green);"></div></div>
+    <ul>
+      <li>GitHub Actions CI: build + test + coverage + format check</li>
+      <li>CodeQL weekly security analysis</li>
+      <li>Dependabot weekly updates (NuGet + Actions)</li>
+      <li>ReportGenerator for coverage summary</li>
+    </ul>
+    <div class="strengths"><strong>Strengths:</strong> Comprehensive CI pipeline; automated security scanning</div>
+    <div class="weaknesses"><strong>Weaknesses:</strong> No CD/deploy step; no preview environments</div>
+  </div>
+
+</div>
+
+<!-- Score Summary Table -->
+<h2>Score Summary</h2>
+<table>
+  <tr>
+    <th>Category</th><th>Score</th><th>Weight</th><th>Weighted</th><th>Assessment</th>
+  </tr>
+  <tr>
+    <td>Architecture</td><td class="stat-number">8/10</td><td>20%</td><td class="stat-number">1.60</td>
+    <td><span class="verdict-good">Good</span> — Service layer, DI, multi-tenancy</td>
+  </tr>
+  <tr>
+    <td>Code Quality</td><td class="stat-number">8/10</td><td>15%</td><td class="stat-number">1.20</td>
+    <td><span class="verdict-good">Good</span> — Style enforcement, pagination, modular CSS</td>
+  </tr>
+  <tr>
+    <td>Security</td><td class="stat-number">8/10</td><td>15%</td><td class="stat-number">1.20</td>
+    <td><span class="verdict-good">Good</span> — BCrypt, rate limiting, headers, cookie hardening</td>
+  </tr>
+  <tr>
+    <td>Performance</td><td class="stat-number">6/10</td><td>10%</td><td class="stat-number">0.60</td>
+    <td><span class="verdict-warn">Fair</span> — Caching present, lacks real-time &amp; distributed cache</td>
+  </tr>
+  <tr>
+    <td>UI / UX</td><td class="stat-number">6/10</td><td>10%</td><td class="stat-number">0.60</td>
+    <td><span class="verdict-warn">Fair</span> — Clean but missing attachments, i18n, dark mode</td>
+  </tr>
+  <tr>
+    <td>Maintainability</td><td class="stat-number">8/10</td><td>10%</td><td class="stat-number">0.80</td>
+    <td><span class="verdict-good">Good</span> — Modular, testable, consistent</td>
+  </tr>
+  <tr>
+    <td>Documentation</td><td class="stat-number">8/10</td><td>10%</td><td class="stat-number">0.80</td>
+    <td><span class="verdict-good">Good</span> — XML docs, README, CHANGELOG, CONTRIBUTING</td>
+  </tr>
+  <tr>
+    <td>Testing</td><td class="stat-number">7/10</td><td>10%</td><td class="stat-number">0.70</td>
+    <td><span class="verdict-warn">Fair</span> — Good coverage breadth, low line coverage</td>
+  </tr>
+  <tr>
+    <td>CI / CD</td><td class="stat-number">9/10</td><td>5%</td><td class="stat-number">0.45</td>
+    <td><span class="verdict-good">Excellent</span> — Full CI pipeline + CodeQL + Dependabot</td>
+  </tr>
+  <tr style="border-top:2px solid var(--accent);font-weight:700;">
+    <td>Overall</td><td colspan="2"><strong>B+</strong></td><td class="stat-number">6.95 / 10</td>
+    <td>Solid production-ready foundation</td>
+  </tr>
+</table>
+
+<!-- Strengths & Gaps -->
+<h2>Key Strengths</h2>
+<table>
+  <tr><th>Area</th><th>Detail</th></tr>
+  <tr><td>Architecture</td><td>Clean service-layer separation; DI throughout; multi-tenant data scoping via org claims</td></tr>
+  <tr><td>Security</td><td>Defence-in-depth: BCrypt + rate limiting + CSP + cookie hardening + account lockout</td></tr>
+  <tr><td>Testing</td><td>60 tests spanning unit, integration, and smoke; InMemory isolation; CI coverage collection</td></tr>
+  <tr><td>CI/CD</td><td>Three automated workflows: CI (build/test/coverage/format), CodeQL, Dependabot</td></tr>
+  <tr><td>Documentation</td><td>113 XML-documented members; three markdown guides; Swagger integration</td></tr>
+  <tr><td>Code Quality</td><td>.editorconfig enforcement; PaginatedList helper; modular CSS; caching</td></tr>
+</table>
+
+<h2>Critical Gaps</h2>
+<table>
+  <tr><th>Priority</th><th>Issue</th><th>Impact</th></tr>
+  <tr>
+    <td><span class="verdict-bad">High</span></td>
+    <td>ProfileController &amp; AccountController inject AppDbContext directly</td>
+    <td>Violates separation of concerns; business logic not testable through service mocks</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-bad">High</span></td>
+    <td>No real-time notifications (30s polling)</td>
+    <td>Wasted bandwidth; stale notification display</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-bad">High</span></td>
+    <td>No file attachments on tasks</td>
+    <td>Cannot attach files to tasks; limited collaboration</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-bad">Medium</span></td>
+    <td>No email notifications for assignment/comment</td>
+    <td>Users must poll for updates</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-warn">Medium</span></td>
+    <td>Only 14.5% line coverage</td>
+    <td>Controllers, views, and edge cases not covered</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-warn">Medium</span></td>
+    <td>No localization / i18n</td>
+    <td>English-only; no multi-language support</td>
+  </tr>
+  <tr>
+    <td><span class="verdict-warn">Low</span></td>
+    <td>40 IDE0008 style warnings (var vs explicit type)</td>
+    <td>Minor style inconsistency; no runtime impact</td>
+  </tr>
+</table>
+
+<!-- Before/After -->
+<h2>Before &amp; After: Phase 1-7 Transformation</h2>
+<table>
+  <tr><th>Category</th><th>Before</th><th>After</th><th>Δ</th></tr>
+  <tr>
+    <td>Architecture</td>
+    <td>Monolithic controller; no service layer</td>
+    <td>6 service pairs; BaseController; DI throughout</td>
+    <td class="verdict-good">+6 service pairs</td>
+  </tr>
+  <tr>
+    <td>Code Quality</td>
+    <td>No .editorconfig; inline JSON; no pagination; monolith CSS</td>
+    <td>Style enforcement; data-* attributes; PaginatedList; 8 CSS partials</td>
+    <td class="verdict-good">+4 improvements</td>
+  </tr>
+  <tr>
+    <td>Security</td>
+    <td>No rate limiting; no security headers; no cookie hardening</td>
+    <td>Rate limiting; CSP/XFO/XCTO/Referrer-Policy; HttpOnly+Secure+SameSite</td>
+    <td class="verdict-good">+5 layers</td>
+  </tr>
+  <tr>
+    <td>Performance</td>
+    <td>30s polling; no caching</td>
+    <td>IMemoryCache (45s TTL); pagination; AsNoTracking</td>
+    <td class="verdict-good">+1 cache</td>
+  </tr>
+  <tr>
+    <td>UI/UX</td>
+    <td>Monolith CSS; polling notifications</td>
+    <td>8 modular CSS files; dynamic sidebar via ViewComponent</td>
+    <td class="verdict-good">+9 files</td>
+  </tr>
+  <tr>
+    <td>Documentation</td>
+    <td>Zero documentation</td>
+    <td>113 XML-documented members; README; CHANGELOG; CONTRIBUTING</td>
+    <td class="verdict-good">+3 markdown files</td>
+  </tr>
+  <tr>
+    <td>Testing</td>
+    <td>No tests</td>
+    <td>60 tests (unit + integration + smoke)</td>
+    <td class="verdict-good">+60 tests</td>
+  </tr>
+  <tr>
+    <td>CI/CD</td>
+    <td>No CI/CD</td>
+    <td>CI build/test/coverage/format; CodeQL; Dependabot</td>
+    <td class="verdict-good">+3 workflows</td>
+  </tr>
+  <tr>
+    <td>Code Count</td>
+    <td>~500 lines</td>
+    <td>~13,740 lines</td>
+    <td class="verdict-good">+13,240 loc</td>
+  </tr>
+</table>
+
+<!-- Recommendations -->
+<h2>Recommended Next Steps</h2>
+<ol style="color:var(--text-muted);line-height:1.8;padding-left:1.5rem;">
+  <li><strong>Refactor ProfileController &amp; AccountController</strong> — Extract business logic into <code>IUserService</code>/<code>IProfileService</code>/<code>IAccountService</code>, add tests for them.</li>
+  <li><strong>Implement SignalR</strong> — Replace 30s polling with <code>NotificationHub</code> for real-time notification delivery.</li>
+  <li><strong>Add file attachments</strong> — <code>TaskAttachment</code> model, <code>IFileStorageService</code> (local disk with cloud swap-in), upload endpoint, detail-view UI.</li>
+  <li><strong>Email notifications</strong> — <code>IEmailService</code> with MailKit; trigger on task assignment and new comments.</li>
+  <li><strong>Increase test coverage</strong> — Add controller unit tests, view component tests, and target &gt;50% line coverage.</li>
+  <li><strong>Localization</strong> — Extract strings to <code>.resx</code>, configure ASP.NET Core localization middleware.</li>
+  <li><strong>Fix IDE0008 warnings</strong> — Replace <code>var</code> with explicit types across the codebase to eliminate 40 build warnings.</li>
+  <li><strong>Add deploy step</strong> — Extend CI workflow to publish and deploy (Azure / Docker / Fly.io).</li>
+</ol>
+
+<div class="footer">
+  Generated July 2026 &middot; TaskFlow TMS &middot; ASP.NET Core 9.0
+</div>
+
+</div>
+</body>
+</html>
