@@ -29,7 +29,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./TestResults
 
       - name: Coverage summary
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.4.4
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.5.10
         with:
           reports: ./TestResults/**/coverage.cobertura.xml
           targetdir: ./CoverageReport
